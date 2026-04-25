@@ -10,9 +10,9 @@ import (
 	"github.com/grandiv/nazareth/internal/api"
 	"github.com/grandiv/nazareth/internal/auth"
 	"github.com/grandiv/nazareth/internal/config"
+	"github.com/grandiv/nazareth/internal/oracle"
 	"github.com/grandiv/nazareth/internal/provider/hevy"
 	"github.com/grandiv/nazareth/internal/provider/strava"
-	"github.com/grandiv/nazareth/internal/signer"
 	"github.com/grandiv/nazareth/internal/store"
 )
 
@@ -32,18 +32,18 @@ func main() {
 	stravaProv := strava.New(cfg.StravaClientID, cfg.StravaClientSecret, s)
 	hevyProv := hevy.New(cfg.HevyAPIKey)
 
-	var eip712Signer *signer.EIP712Signer
-	if cfg.SignerPrivateKey != "" && cfg.GoalVaultAddress != "" {
-		eip712Signer, err = signer.New(cfg.SignerPrivateKey, cfg.GoalVaultAddress, 84532)
+	var oracleClient *oracle.OracleClient
+	if cfg.SignerPrivateKey != "" {
+		oracleClient, err = oracle.New(cfg.RPCURL, cfg.SignerPrivateKey, cfg.OracleAddress, cfg.RegistryAddress, 84532)
 		if err != nil {
-			log.Fatalf("init signer: %v", err)
+			log.Fatalf("init oracle: %v", err)
 		}
-		log.Printf("Signer address: %s", eip712Signer.Address().Hex())
+		log.Printf("Oracle address: %s", oracleClient.Address().Hex())
 	} else {
-		log.Println("WARNING: signer not configured (no BACKEND_SIGNER_PRIVATE_KEY or GOAL_VAULT_ADDRESS)")
+		log.Println("WARNING: oracle not configured (no BACKEND_SIGNER_PRIVATE_KEY)")
 	}
 
-	handler := api.New(s, stravaProv, hevyProv, eip712Signer, cfg.JWTSecret, cfg.StravaRedirectURI, "http://localhost:5173")
+	handler := api.New(s, stravaProv, hevyProv, oracleClient, cfg.JWTSecret, cfg.StravaRedirectURI, "http://localhost:5173")
 
 	mux := http.NewServeMux()
 
@@ -61,9 +61,10 @@ func main() {
 	mux.Handle("POST /api/goals", authed(http.HandlerFunc(handler.HandleCreateGoal)))
 	mux.Handle("GET /api/goals", authed(http.HandlerFunc(handler.HandleListGoals)))
 	mux.Handle("GET /api/goals/{id}", authed(http.HandlerFunc(handler.HandleGetGoal)))
-	mux.Handle("GET /api/goals/{id}/progress", authed(http.HandlerFunc(handler.HandleGoalProgress)))
+	mux.Handle("POST /api/goals/{id}/progress", authed(http.HandlerFunc(handler.HandleGoalProgress)))
 	mux.Handle("POST /api/goals/{id}/settle", authed(http.HandlerFunc(handler.HandleSettleGoal)))
 	mux.Handle("POST /api/goals/{id}/contract", authed(http.HandlerFunc(handler.HandleUpdateContractID)))
+	mux.Handle("POST /api/registry/sign", authed(http.HandlerFunc(handler.HandleRegistrySign)))
 
 	corsMux := cors(mux)
 

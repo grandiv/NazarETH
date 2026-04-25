@@ -10,11 +10,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/grandiv/nazareth/internal/auth"
 	"github.com/grandiv/nazareth/internal/goal"
+	"github.com/grandiv/nazareth/internal/oracle"
 	"github.com/grandiv/nazareth/internal/provider/hevy"
 	"github.com/grandiv/nazareth/internal/provider/strava"
-	"github.com/grandiv/nazareth/internal/signer"
 	"github.com/grandiv/nazareth/internal/store"
 )
 
@@ -22,18 +23,18 @@ type API struct {
 	store             *store.Store
 	strava            *strava.StravaProvider
 	hevy              *hevy.HevyProvider
-	signer            *signer.EIP712Signer
+	oracle            *oracle.OracleClient
 	jwtSecret         string
 	stravaRedirectURI string
 	frontendURL       string
 }
 
-func New(s *store.Store, st *strava.StravaProvider, hv *hevy.HevyProvider, sg *signer.EIP712Signer, jwtSecret, stravaRedirectURI, frontendURL string) *API {
+func New(s *store.Store, st *strava.StravaProvider, hv *hevy.HevyProvider, oc *oracle.OracleClient, jwtSecret, stravaRedirectURI, frontendURL string) *API {
 	return &API{
 		store:             s,
 		strava:            st,
 		hevy:              hv,
-		signer:            sg,
+		oracle:            oc,
 		jwtSecret:         jwtSecret,
 		stravaRedirectURI: stravaRedirectURI,
 		frontendURL:       frontendURL,
@@ -117,7 +118,7 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 		hevyConnected = true
 	}
 	writeJSON(w, 200, map[string]interface{}{
-		"user":            user,
+		"user":             user,
 		"strava_connected": stravaConnected,
 		"hevy_connected":   hevyConnected,
 	})
@@ -368,6 +369,10 @@ func (a *API) HandleSettleGoal(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, "deadline not passed")
 		return
 	}
+	if a.oracle == nil {
+		writeError(w, 500, "oracle not configured")
+		return
+	}
 
 	var actualValue uint64
 	switch g.Provider {
@@ -390,12 +395,17 @@ func (a *API) HandleSettleGoal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	timestamp := uint64(g.Deadline)
-	contractGoalID := uint64(*g.ContractID)
+	progressBps := uint64((actualValue * 10000) / g.TargetValue)
+	if progressBps > 10000 {
+		progressBps = 10000
+	}
+	reportedAt := uint64(time.Now().Unix())
+	contractID := uint64(*g.ContractID)
+	walletAddr := common.HexToAddress(wallet)
 
-	sig, err := a.signer.SignSettlement(contractGoalID, actualValue, timestamp)
+	txHash, err := a.oracle.SubmitProgress(r.Context(), walletAddr, contractID, progressBps, reportedAt)
 	if err != nil {
-		writeError(w, 500, "signing error")
+		writeError(w, 500, "oracle submit error: "+err.Error())
 		return
 	}
 
@@ -405,12 +415,10 @@ func (a *API) HandleSettleGoal(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = a.store.SettleGoal(g.ID, actualValue, status)
 
-	sigHex := fmt.Sprintf("0x%x", sig)
 	writeJSON(w, 200, map[string]interface{}{
-		"goal_id":       contractGoalID,
+		"tx_hash":       txHash.Hex(),
+		"progress_bps":  progressBps,
 		"actual_value":  actualValue,
-		"timestamp":     timestamp,
-		"signature":     sigHex,
 		"status":        status,
 	})
 }
@@ -434,7 +442,7 @@ func (a *API) HandleUpdateContractID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		ContractID int64  `json:"contract_id"`
+		ContractID  int64  `json:"contract_id"`
 		StakeAmount string `json:"stake_amount"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -449,6 +457,38 @@ func (a *API) HandleUpdateContractID(w http.ResponseWriter, r *http.Request) {
 		_ = a.store.UpdateGoalDeposit(id, req.StakeAmount)
 	}
 	writeJSON(w, 200, map[string]string{"status": "updated"})
+}
+
+func (a *API) HandleRegistrySign(w http.ResponseWriter, r *http.Request) {
+	if a.oracle == nil {
+		writeError(w, 500, "oracle not configured")
+		return
+	}
+	var req struct {
+		Wallet    string `json:"wallet"`
+		StravaID  uint64 `json:"strava_athlete_id"`
+		Nonce     uint64 `json:"nonce"`
+		Deadline  uint64 `json:"deadline"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, 400, "invalid body")
+		return
+	}
+	if req.Wallet == "" || req.StravaID == 0 {
+		writeError(w, 400, "wallet and strava_athlete_id required")
+		return
+	}
+
+	sig, err := a.oracle.SignRegistryRegistration(common.HexToAddress(req.Wallet), req.StravaID, req.Nonce, req.Deadline)
+	if err != nil {
+		writeError(w, 500, "signing error: "+err.Error())
+		return
+	}
+
+	writeJSON(w, 200, map[string]interface{}{
+		"signature": fmt.Sprintf("0x%x", sig),
+		"signer":    a.oracle.Address().Hex(),
+	})
 }
 
 func (a *API) HandleHealth(w http.ResponseWriter, r *http.Request) {
