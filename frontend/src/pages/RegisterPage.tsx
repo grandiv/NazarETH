@@ -171,6 +171,9 @@ export default function RegisterPage({ onNavigate }: Props) {
         }}>✓</div>
         <h2 className="section-title" style={{ marginBottom: 8 }}>Already Registered</h2>
         <p style={{ color: 'var(--text2)', marginBottom: 24 }}>Your wallet is linked to a Strava account.</p>
+        <button className="btn-secondary" onClick={handleStravaConnect} style={{ marginBottom: 12, width: '100%', padding: 13 }}>
+          Re-connect Strava (update permissions)
+        </button>
         <button className="btn-secondary" onClick={() => onNavigate('dashboard')}>
           ← Back to Dashboard
         </button>

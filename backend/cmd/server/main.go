@@ -66,6 +66,7 @@ func main() {
 	mux.Handle("POST /api/goals/{id}/contract", authed(http.HandlerFunc(handler.HandleUpdateContractID)))
 	mux.Handle("POST /api/registry/sign", authed(http.HandlerFunc(handler.HandleRegistrySign)))
 	mux.Handle("POST /api/challenge/sync", authed(http.HandlerFunc(handler.HandleChallengeSync)))
+	mux.Handle("POST /api/strava/upload-run", authed(http.HandlerFunc(handler.HandleStravaUploadRun)))
 
 	corsMux := cors(mux)
 

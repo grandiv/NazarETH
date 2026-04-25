@@ -1,10 +1,14 @@
 package strava
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
+	"math"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -168,13 +172,198 @@ func (p *StravaProvider) FetchProgressForUser(ctx context.Context, userID int64,
 
 func (p *StravaProvider) GetAuthURL(redirectURI, state string) string {
 	return fmt.Sprintf(
-		"https://www.strava.com/oauth/authorize?client_id=%s&response_type=code&redirect_uri=%s&approval_prompt=auto&scope=read,activity:read_all&state=%s",
+		"https://www.strava.com/oauth/authorize?client_id=%s&response_type=code&redirect_uri=%s&approval_prompt=auto&scope=read,activity:read_all,activity:write&state=%s",
 		p.clientID, url.QueryEscape(redirectURI), state,
 	)
 }
 
 func ParseDistanceToKm(meters uint64) string {
 	return strconv.FormatFloat(float64(meters)/1000.0, 'f', 2, 64)
+}
+
+type gpxTrackpoint struct {
+	XMLName xml.Name `xml:"trkpt"`
+	Lat     float64  `xml:"lat,attr"`
+	Lon     float64  `xml:"lon,attr"`
+	Time    string   `xml:"time"`
+}
+
+type gpxTrack struct {
+	XMLName xml.Name        `xml:"trk"`
+	Name    string          `xml:"name"`
+	TrkSeg  []gpxTrackpoint `xml:"trkseg>trkpt"`
+}
+
+type gpxFile struct {
+	XMLName xml.Name `xml:"gpx"`
+	Version string   `xml:"version,attr"`
+	XMLNS   string   `xml:"xmlns,attr"`
+	Track   gpxTrack `xml:"trk"`
+}
+
+func (p *StravaProvider) UploadGpxRun(ctx context.Context, userID int64, name string, points [][2]float64) (int64, float64, string, error) {
+	token, err := p.getAccessToken(userID)
+	if err != nil {
+		return 0, 0, "", err
+	}
+
+	totalDist := 0.0
+	speed := 2.78
+	startTime := time.Now().Add(-time.Duration(int(len(points)*30)) * time.Minute)
+	trackpoints := make([]gpxTrackpoint, len(points))
+	elapsed := 0.0
+
+	for i, pt := range points {
+		if i > 0 {
+			d := haversineFloat(points[i-1][0], points[i-1][1], pt[0], pt[1])
+			totalDist += d
+			elapsed += d / speed
+		}
+		t := startTime.Add(time.Duration(elapsed) * time.Second)
+		trackpoints[i] = gpxTrackpoint{
+			Lat:  pt[0],
+			Lon:  pt[1],
+			Time: t.UTC().Format("2006-01-02T15:04:05Z"),
+		}
+	}
+
+	gpx := gpxFile{
+		Version: "1.1",
+		XMLNS:   "http://www.topografix.com/GPX/1/1",
+		Track: gpxTrack{
+			Name:   name,
+			TrkSeg: trackpoints,
+		},
+	}
+
+	gpxBytes, err := xml.MarshalIndent(gpx, "", "  ")
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("gpx marshal: %w", err)
+	}
+	gpxData := append([]byte(xml.Header), gpxBytes...)
+
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	part, err := writer.CreateFormFile("file", "run.gpx")
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("multipart: %w", err)
+	}
+	part.Write(gpxData)
+	writer.WriteField("data_type", "gpx")
+	writer.WriteField("name", name)
+	writer.WriteField("activity_type", "run")
+	writer.Close()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://www.strava.com/api/v3/uploads", &buf)
+	if err != nil {
+		return 0, 0, "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("strava upload: %w", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode != 201 && resp.StatusCode != 200 {
+		return 0, 0, "", fmt.Errorf("strava upload error (%d): %s", resp.StatusCode, body)
+	}
+
+	var uploadResp struct {
+		ID         int64  `json:"id"`
+		ActivityID int64  `json:"activity_id"`
+		Status     string `json:"status"`
+	}
+	if err := json.Unmarshal(body, &uploadResp); err != nil {
+		return 0, totalDist, "", nil
+	}
+
+	totalSeconds := elapsed
+	paceSeconds := 0.0
+	if totalDist > 0 {
+		paceSeconds = (totalSeconds / totalDist) * 1000
+	}
+	paceStr := fmt.Sprintf("%d:%02d /km", int(paceSeconds)/60, int(paceSeconds)%60)
+
+	activityID := uploadResp.ActivityID
+	if activityID == 0 {
+		for i := 0; i < 10; i++ {
+			time.Sleep(2 * time.Second)
+			checkReq, _ := http.NewRequestWithContext(ctx, "GET",
+				fmt.Sprintf("https://www.strava.com/api/v3/uploads/%d", uploadResp.ID), nil)
+			checkReq.Header.Set("Authorization", "Bearer "+token)
+			checkResp, err := http.DefaultClient.Do(checkReq)
+			if err != nil {
+				continue
+			}
+			checkBody, _ := io.ReadAll(checkResp.Body)
+			checkResp.Body.Close()
+			var check struct {
+				ActivityID int64  `json:"activity_id"`
+				Status     string `json:"status"`
+			}
+			json.Unmarshal(checkBody, &check)
+			if check.ActivityID > 0 {
+				activityID = check.ActivityID
+				break
+			}
+			if check.Status == "There was an error processing your activity." {
+				return 0, totalDist, paceStr, fmt.Errorf("strava processing error")
+			}
+		}
+	}
+
+	return activityID, totalDist, paceStr, nil
+}
+
+func haversineFloat(lat1, lon1, lat2, lon2 float64) float64 {
+	const R = 6371000
+	toRad := func(d float64) float64 { return d * math.Pi / 180 }
+	dLat := toRad(lat2 - lat1)
+	dLon := toRad(lon2 - lon1)
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(toRad(lat1))*math.Cos(toRad(lat2))*math.Sin(dLon/2)*math.Sin(dLon/2)
+	return R * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+}
+
+func (p *StravaProvider) CreateRun(ctx context.Context, userID int64, name string, distanceMeters float64, durationSeconds int) (int64, error) {
+	token, err := p.getAccessToken(userID)
+	if err != nil {
+		return 0, err
+	}
+
+	startTime := time.Now().Add(-time.Duration(durationSeconds) * time.Second)
+	data := url.Values{
+		"name":             {name},
+		"type":             {"Run"},
+		"start_date_local": {startTime.Format("2006-01-02T15:04:05Z")},
+		"elapsed_time":     {strconv.Itoa(durationSeconds)},
+		"distance":         {strconv.FormatFloat(distanceMeters, 'f', 2, 64)},
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://www.strava.com/api/v3/activities?"+data.Encode(), nil)
+	if err != nil {
+		return 0, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("strava create activity: %w", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 201 && resp.StatusCode != 200 {
+		return 0, fmt.Errorf("strava create error (%d): %s", resp.StatusCode, body)
+	}
+	var result struct {
+		ID int64 `json:"id"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return 0, fmt.Errorf("strava create parse: %w", err)
+	}
+	return result.ID, nil
 }
 
 var _ provider.Provider = (*StravaProvider)(nil)

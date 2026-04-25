@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -578,6 +579,43 @@ func (a *API) HandleChallengeSync(w http.ResponseWriter, r *http.Request) {
 func generateNonce() string {
 	n, _ := rand.Int(rand.Reader, big.NewInt(1e18))
 	return fmt.Sprintf("%d", n)
+}
+
+func (a *API) HandleStravaUploadRun(w http.ResponseWriter, r *http.Request) {
+	wallet := auth.GetWalletFromContext(r.Context())
+	user, err := a.store.GetUserByWallet(wallet)
+	if err != nil {
+		writeError(w, 404, "user not found")
+		return
+	}
+	var req struct {
+		Name   string        `json:"name"`
+		Points [][2]float64  `json:"points"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, 400, "invalid body")
+		return
+	}
+	if len(req.Points) < 2 {
+		writeError(w, 400, "need at least 2 points")
+		return
+	}
+	if req.Name == "" {
+		req.Name = "NazarETH Run"
+	}
+
+	activityID, distM, pace, err := a.strava.UploadGpxRun(r.Context(), user.ID, req.Name, req.Points)
+	if err != nil {
+		writeError(w, 500, "strava upload error: "+err.Error())
+		return
+	}
+
+	writeJSON(w, 200, map[string]interface{}{
+		"activity_id": activityID,
+		"distance_m":  math.Round(distM),
+		"pace":        pace,
+		"points":      len(req.Points),
+	})
 }
 
 func randomHex(n int) string {

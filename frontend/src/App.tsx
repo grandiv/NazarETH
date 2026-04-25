@@ -8,8 +8,9 @@ import NewChallengePage from './pages/NewChallengePage'
 import ActiveChallengePage from './pages/ActiveChallengePage'
 import OraclePage from './pages/OraclePage'
 import HistoryPage from './pages/HistoryPage'
+import SimulateRunPage from './pages/SimulateRunPage'
 
-export type Page = 'dashboard' | 'register' | 'new-challenge' | 'active' | 'oracle' | 'history'
+export type Page = 'dashboard' | 'register' | 'new-challenge' | 'active' | 'oracle' | 'history' | 'simulate'
 
 function getPageFromURL(): Page | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '')
@@ -18,6 +19,7 @@ function getPageFromURL(): Page | null {
   if (path === 'active') return 'active'
   if (path === 'oracle') return 'oracle'
   if (path === 'history') return 'history'
+  if (path === 'simulate') return 'simulate'
   const params = new URLSearchParams(window.location.search)
   if (params.get('strava_athlete_id')) return 'register'
   return null
@@ -97,6 +99,7 @@ export default function App() {
       {page === 'active' && <ActiveChallengePage />}
       {page === 'oracle' && <OraclePage />}
       {page === 'history' && <HistoryPage />}
+      {page === 'simulate' && <SimulateRunPage onNavigate={navigate} />}
     </Layout>
   )
 }
