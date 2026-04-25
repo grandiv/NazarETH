@@ -1,12 +1,15 @@
+import { useState } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { baseSepolia } from 'wagmi/chains'
 import {
   ADDRESSES, NazarChallengeAbi, NazarOracleAbi, MockUSDAbi,
-  formatUSDC, formatBps, formatDeadline, CHALLENGE_STATUS,
+  formatUSDC, formatBps, formatDeadline, CHALLENGE_STATUS, BACKEND_URL,
 } from '../lib/contracts'
 
 export default function ActiveChallengePage() {
   const { address, isConnected } = useAccount()
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
 
   const { data: challengeId, refetch: refetchId } = useReadContract({
     address: ADDRESSES.NazarChallenge,
@@ -107,6 +110,31 @@ export default function ActiveChallengePage() {
     1: { color: 'var(--warn)', bg: 'rgba(251,191,36,0.08)' },
     2: { color: 'var(--accent2)', bg: 'rgba(252,76,2,0.08)' },
     3: { color: 'var(--success)', bg: 'rgba(52,211,153,0.08)' },
+  }
+
+  async function handleSyncProgress() {
+    if (!address || !challengeId || challengeId === 0n) return
+    setSyncing(true)
+    setSyncMsg('')
+    try {
+      const token = localStorage.getItem('nazareth_token')
+      if (!token) { setSyncMsg('Sign in first (Register page)'); setSyncing(false); return }
+      const res = await fetch(`${BACKEND_URL}/api/goals/0/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ challenge_id: String(challengeId), wallet: address }),
+      })
+      const data = await res.json()
+      if (data.tx_hash) {
+        setSyncMsg(`Oracle tx sent: ${data.tx_hash.slice(0, 10)}... (${data.progress_bps / 100}% progress)`)
+        refetchProgress()
+      } else {
+        setSyncMsg(data.error || 'Sync failed')
+      }
+    } catch (e: any) {
+      setSyncMsg(e.message || 'Sync error')
+    }
+    setSyncing(false)
   }
 
   return (
@@ -277,6 +305,35 @@ export default function ActiveChallengePage() {
             })}>
             {withdrawing ? 'Confirming...' : 'Withdraw Milestone'}
           </button>
+        </div>
+      )}
+
+      {isActive && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'rgba(252,76,2,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16,
+            }}>🔄</div>
+            <div>
+              <div style={{ fontWeight: 700 }}>Sync Strava Progress</div>
+              <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+                Fetch your latest Strava data and submit to oracle.
+              </div>
+            </div>
+          </div>
+          <button className="btn-primary" style={{ width: '100%', padding: 12 }}
+            disabled={syncing}
+            onClick={handleSyncProgress}>
+            {syncing ? 'Syncing...' : 'Sync from Strava'}
+          </button>
+          {syncMsg && (
+            <div style={{ marginTop: 10, fontSize: 13, color: syncMsg.includes('error') ? 'var(--error)' : 'var(--success)' }}>
+              {syncMsg}
+            </div>
+          )}
         </div>
       )}
 

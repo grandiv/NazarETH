@@ -56,4 +56,6 @@ export function formatDeadline(ts: bigint): string {
   })
 }
 
+export const BACKEND_URL = 'http://localhost:8080'
+
 export const CHALLENGE_STATUS = ['NotStarted', 'Created', 'Active', 'Finalized'] as const
