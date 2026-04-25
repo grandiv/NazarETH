@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useSignMessage, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { baseSepolia } from 'wagmi/chains'
 import type { Page } from '../App'
@@ -23,13 +23,23 @@ export default function RegisterPage({ onNavigate }: Props) {
     query: { enabled: !!address },
   })
 
-  const { data: nonce, refetch: refetchNonce } = useReadContract({
+  const { data: nonce } = useReadContract({
     address: ADDRESSES.NazarRegistry,
     abi: NazarRegistryAbi,
     functionName: 'nonces',
     args: [address as `0x${string}`],
     query: { enabled: !!address },
   })
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const athleteId = params.get('strava_athlete_id')
+    if (athleteId) {
+      setStravaAthleteId(athleteId)
+      setStravaFlow(true)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   async function handleStravaConnect() {
     if (!address) return
@@ -64,6 +74,23 @@ export default function RegisterPage({ onNavigate }: Props) {
     } catch (e: any) {
       setErr(e.message || 'Error connecting Strava')
     }
+  }
+
+  const { writeContract, data: txHash, isPending, error } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+    query: { enabled: !!txHash },
+  })
+
+  function handleDevRegister() {
+    if (!stravaId || !address) return
+    writeContract({
+      address: ADDRESSES.NazarRegistry,
+      abi: NazarRegistryAbi,
+      functionName: 'devRegister',
+      args: [BigInt(stravaId)],
+      chainId: baseSepolia.id,
+    })
   }
 
   async function handleStravaRegister() {
@@ -101,25 +128,11 @@ export default function RegisterPage({ onNavigate }: Props) {
     }
   }
 
-  const { writeContract, data: txHash, isPending, error } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash: txHash,
-    query: { enabled: !!txHash },
-  })
-
-  function handleRegister() {
-    if (!stravaId || !address) return
-    writeContract({
-      address: ADDRESSES.NazarRegistry,
-      abi: NazarRegistryAbi,
-      functionName: 'devRegister',
-      args: [BigInt(stravaId)],
-      chainId: baseSepolia.id,
-    })
-  }
+  useEffect(() => {
+    if (isSuccess) refetch()
+  }, [isSuccess, refetch])
 
   if (isSuccess) {
-    refetch()
     return (
       <div className="card animate-in" style={{ textAlign: 'center', padding: 48 }}>
         <div style={{
@@ -130,7 +143,7 @@ export default function RegisterPage({ onNavigate }: Props) {
         }}>✓</div>
         <h2 className="section-title" style={{ marginBottom: 8 }}>Registered!</h2>
         <p style={{ color: 'var(--text2)', marginBottom: 24, lineHeight: 1.6 }}>
-          Strava ID <strong>{stravaId}</strong> is now linked to your wallet.
+          Strava ID <strong>{stravaAthleteId || stravaId}</strong> is now linked to your wallet.
         </p>
         <button className="btn-primary" onClick={() => onNavigate('new-challenge')}>
           Create a Challenge →
@@ -172,7 +185,35 @@ export default function RegisterPage({ onNavigate }: Props) {
         Link your wallet to a Strava athlete ID.
       </p>
 
-      {!stravaFlow ? (
+      {stravaAthleteId && !isSuccess ? (
+        <div className="card">
+          <div className="form-group">
+            <label className="form-label">Strava Athlete ID (from OAuth)</label>
+            <input
+              type="text"
+              value={stravaAthleteId}
+              readOnly
+              style={{ background: 'var(--surface2)', opacity: 0.8 }}
+            />
+            <span className="form-hint">Verified via Strava OAuth.</span>
+          </div>
+
+          {(error || err) && (
+            <div className="error-box" style={{ marginBottom: 12 }}>
+              {(error as any)?.shortMessage ?? err ?? error?.message}
+            </div>
+          )}
+
+          <button
+            className="btn-primary"
+            style={{ width: '100%', padding: 13 }}
+            disabled={isPending || isConfirming || loading}
+            onClick={handleStravaRegister}
+          >
+            {isPending ? 'Confirm in wallet...' : isConfirming ? 'Confirming...' : loading ? 'Signing...' : 'Register (EIP-712)'}
+          </button>
+        </div>
+      ) : !stravaFlow ? (
         <div className="card">
           <button
             className="btn-primary"
@@ -216,7 +257,7 @@ export default function RegisterPage({ onNavigate }: Props) {
             className="btn-primary"
             style={{ width: '100%', padding: 13 }}
             disabled={!stravaId || isPending || isConfirming}
-            onClick={handleRegister}
+            onClick={handleDevRegister}
           >
             {isPending ? 'Confirm in wallet...' : isConfirming ? 'Confirming...' : 'Register (devMode)'}
           </button>

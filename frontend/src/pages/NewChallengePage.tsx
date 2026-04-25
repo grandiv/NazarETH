@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { baseSepolia } from 'wagmi/chains'
 import type { Page } from '../App'
@@ -40,7 +40,7 @@ export default function NewChallengePage({ onNavigate }: Props) {
     query: { enabled: !!approveTx },
   })
 
-  if (approveSuccess && step === 'approve') { refetchAllowance(); setStep('create') }
+  useEffect(() => { if (approveSuccess && step === 'approve') { refetchAllowance(); setStep('create') } }, [approveSuccess, step, refetchAllowance])
 
   const { writeContract: create, data: createTx, isPending: creating, error: createErr } = useWriteContract()
   const { isSuccess: createSuccess } = useWaitForTransactionReceipt({

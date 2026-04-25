@@ -15,9 +15,3 @@ declare module 'wagmi' {
     config: typeof config
   }
 }
-
-declare module 'wagmi' {
-  interface Register {
-    config: typeof config
-  }
-}

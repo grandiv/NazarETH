@@ -2,17 +2,17 @@ import abis from './abis.json'
 
 // ─── Deployed addresses (Base Sepolia — MockUSDC, 2-min durations for PoC) ──
 export const ADDRESSES = {
-  MockUSDC:       '0x7E450bbceD79824BDb019a39D4147288159CA405',
-  NazarRegistry:  '0x04a340843af2e6b98D6C73a34195D715954e6F8C',
-  NazarOracle:    '0xf3A7a178C94152a8ad3eCcBc859DdcEf39763eBB',
-  NazarYield:     '0xa68aE383B23D31730C0c5D1F8E2d869406f01CB3',
-  NazarTreasury:  '0xAD2c206C02107D594B3B337Ce10950c14986205c',
-  NazarChallenge: '0xB7dF500fec819efD7FC6F544C6A9B760d1cdEC2a',
+  MockUSDC:       '0x6118c512a606d55d2b466727e8f26E60233860dd',
+  NazarRegistry:  '0x811a837bdaa8D27967Db87af87C54291B33B6bae',
+  NazarOracle:    '0x30D282C7bd12467714Bb922C62f712bC4FC0002f',
+  NazarYield:     '0x7b5d6f5ff516F1d7d6EF0E9DD9cfBA79A5e8f12d',
+  NazarTreasury:  '0x1CFA02Ab6649a679435cB9C1CafbEA6CE0F92e66',
+  NazarChallenge: '0x0c1D52dAe67E3136729Ccb26a4ba64648f5eCFda',
 } as const
 
 // ─── Known accounts ─────────────────────────────────────────────────────────
 export const KNOWN_ACCOUNTS = {
-  admin: '0xB88a63ba8C3f630bBdA24c121A66199555f056B2',   // deployer/oracle/admin on Base Sepolia
+  admin: '0x40C3DD9a3aA86206655F14115897227f302C8B8A',
 } as const
 
 // ─── ABI exports ─────────────────────────────────────────────────────────────
@@ -25,9 +25,9 @@ export const MockUSDAbi          = abis.MockUSDC        as readonly object[]
 // ─── Activity types ──────────────────────────────────────────────────────────
 // keccak256 of each activity name (must match what the contract expects)
 export const ACTIVITY_TYPES = {
-  running:  '0xd5b59c4d76e21fede15a8d63e16db9d1ac9104e77339e2cfebfe85c1f2d62f72',
-  cycling:  '0x9db3e7ab5e3cf96cef648e0e3e0571c5f1d4c5b4a2c5e8cb4b1a3f0e2cd8b49c',
-  swimming: '0x4e9b29e634f4c9e1db7e3f7a4c3d1b8a4b3e6f2c8a1d4e7b0c3f2a6e9d5b8c1',
+  running:  '0x4e45c7c91129f5ae76a510707a27b402fd8be2688a505b20884082c04ede7c89',
+  cycling:  '0x97bb3aadbe11b7bc5840305bc7c2470f9508ff509ba191ca10dc148456fef79f',
+  swimming: '0xe3e03e387e9587e5ad571016cc7a887da2d9848343f3926493fc1fcc5d7c2d5d',
 } as const
 
 // ─── Utils ───────────────────────────────────────────────────────────────────

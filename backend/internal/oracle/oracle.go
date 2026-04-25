@@ -18,15 +18,16 @@ import (
 )
 
 type OracleClient struct {
-	client       *ethclient.Client
-	privateKey   *ecdsa.PrivateKey
-	chainID      *big.Int
-	oracleAddr   common.Address
-	registryAddr common.Address
-	nonceMu      sync.Mutex
+	client        *ethclient.Client
+	privateKey    *ecdsa.PrivateKey
+	chainID       *big.Int
+	oracleAddr    common.Address
+	registryAddr  common.Address
+	challengeAddr common.Address
+	nonceMu       sync.Mutex
 }
 
-func New(rpcURL, privateKeyHex, oracleAddr, registryAddr string, chainID int64) (*OracleClient, error) {
+func New(rpcURL, privateKeyHex, oracleAddr, registryAddr, challengeAddr string, chainID int64) (*OracleClient, error) {
 	client, err := ethclient.Dial(rpcURL)
 	if err != nil {
 		return nil, fmt.Errorf("dial rpc: %w", err)
@@ -38,11 +39,12 @@ func New(rpcURL, privateKeyHex, oracleAddr, registryAddr string, chainID int64) 
 	}
 
 	return &OracleClient{
-		client:       client,
-		privateKey:   pk,
-		chainID:      big.NewInt(chainID),
-		oracleAddr:   common.HexToAddress(oracleAddr),
-		registryAddr: common.HexToAddress(registryAddr),
+		client:        client,
+		privateKey:    pk,
+		chainID:       big.NewInt(chainID),
+		oracleAddr:    common.HexToAddress(oracleAddr),
+		registryAddr:  common.HexToAddress(registryAddr),
+		challengeAddr: common.HexToAddress(challengeAddr),
 	}, nil
 }
 
@@ -153,18 +155,22 @@ func (o *OracleClient) sendTx(ctx context.Context, calldata []byte) (common.Hash
 		return common.Hash{}, err
 	}
 
-	tx := ethereum.CallMsg{
+	gasEstimate := ethereum.CallMsg{
 		From: o.Address(),
 		To:   &o.oracleAddr,
 		Data: calldata,
 	}
-	gas, err := o.client.EstimateGas(ctx, tx)
+	gas, err := o.client.EstimateGas(ctx, gasEstimate)
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("estimate gas: %w", err)
 	}
-	auth.GasLimit = gas + 10000
+	gasLimit := gas + 10000
 
-	signedTx := types.NewTransaction(auth.Nonce.Uint64(), o.oracleAddr, big.NewInt(0), auth.GasLimit, auth.GasPrice, calldata)
+	unsignedTx := types.NewTransaction(auth.Nonce.Uint64(), o.oracleAddr, big.NewInt(0), gasLimit, auth.GasPrice, calldata)
+	signedTx, err := types.SignTx(unsignedTx, types.NewEIP155Signer(o.chainID), o.privateKey)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("sign tx: %w", err)
+	}
 	if err := o.client.SendTransaction(ctx, signedTx); err != nil {
 		return common.Hash{}, fmt.Errorf("send tx: %w", err)
 	}
@@ -179,4 +185,40 @@ func (o *OracleClient) parseOracleABI() (*abi.ABI, error) {
 		return nil, fmt.Errorf("parse abi: %w", err)
 	}
 	return &parsed, nil
+}
+
+func (o *OracleClient) GetChallengeTarget(ctx context.Context, challengeID uint64) (uint64, error) {
+	challengeABIJSON := `[{"inputs":[{"name":"","type":"uint256"}],"name":"getChallenge","outputs":[{"name":"challenger","type":"address"},{"name":"activityType","type":"bytes32"},{"name":"targetValue","type":"uint256"},{"name":"deadline","type":"uint256"},{"name":"stakeAmount","type":"uint256"},{"name":"status","type":"uint8"},{"name":"withdrawnBps","type":"uint256"}],"stateMutability":"view","type":"function"}]`
+
+	parsed, err := abi.JSON(strings.NewReader(challengeABIJSON))
+	if err != nil {
+		return 0, fmt.Errorf("parse challenge abi: %w", err)
+	}
+
+	calldata, err := parsed.Pack("getChallenge", new(big.Int).SetUint64(challengeID))
+	if err != nil {
+		return 0, fmt.Errorf("pack: %w", err)
+	}
+
+	result, err := o.client.CallContract(ctx, ethereum.CallMsg{
+		To:   &o.challengeAddr,
+		Data: calldata,
+	}, nil)
+	if err != nil {
+		return 0, fmt.Errorf("call getChallenge: %w", err)
+	}
+
+	out, err := parsed.Methods["getChallenge"].Outputs.Unpack(result)
+	if err != nil {
+		return 0, fmt.Errorf("unpack: %w", err)
+	}
+	if len(out) < 3 {
+		return 0, fmt.Errorf("unexpected getChallenge output length: %d", len(out))
+	}
+
+	targetValue, ok := out[2].(*big.Int)
+	if !ok {
+		return 0, fmt.Errorf("targetValue is not *big.Int")
+	}
+	return targetValue.Uint64(), nil
 }

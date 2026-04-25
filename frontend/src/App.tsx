@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useChainId, useSwitchChain } from 'wagmi'
 import { baseSepolia } from 'wagmi/chains'
 import Layout from './components/Layout'
@@ -10,6 +10,18 @@ import OraclePage from './pages/OraclePage'
 import HistoryPage from './pages/HistoryPage'
 
 export type Page = 'dashboard' | 'register' | 'new-challenge' | 'active' | 'oracle' | 'history'
+
+function getPageFromURL(): Page | null {
+  const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '')
+  if (path === 'register') return 'register'
+  if (path === 'new-challenge') return 'new-challenge'
+  if (path === 'active') return 'active'
+  if (path === 'oracle') return 'oracle'
+  if (path === 'history') return 'history'
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('strava_athlete_id')) return 'register'
+  return null
+}
 
 function WrongChainBanner() {
   const { switchChain, isPending } = useSwitchChain()
@@ -58,16 +70,30 @@ function WrongChainBanner() {
 }
 
 export default function App() {
-  const [page, setPage] = useState<Page>('dashboard')
+  const [page, setPage] = useState<Page>(() => getPageFromURL() ?? 'dashboard')
   const { isConnected } = useAccount()
   const chainId = useChainId()
   const isWrongChain = isConnected && chainId !== baseSepolia.id
 
+  useEffect(() => {
+    const onPopState = () => {
+      const p = getPageFromURL()
+      if (p) setPage(p)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  const navigate = (p: Page) => {
+    setPage(p)
+    window.history.pushState({}, '', '/' + (p === 'dashboard' ? '' : p))
+  }
+
   return (
-    <Layout currentPage={page} onNavigate={setPage} banner={isWrongChain ? <WrongChainBanner /> : undefined}>
-      {page === 'dashboard' && <DashboardPage onNavigate={setPage} />}
-      {page === 'register' && <RegisterPage onNavigate={setPage} />}
-      {page === 'new-challenge' && <NewChallengePage onNavigate={setPage} />}
+    <Layout currentPage={page} onNavigate={navigate} banner={isWrongChain ? <WrongChainBanner /> : undefined}>
+      {page === 'dashboard' && <DashboardPage onNavigate={navigate} />}
+      {page === 'register' && <RegisterPage onNavigate={navigate} />}
+      {page === 'new-challenge' && <NewChallengePage onNavigate={navigate} />}
       {page === 'active' && <ActiveChallengePage />}
       {page === 'oracle' && <OraclePage />}
       {page === 'history' && <HistoryPage />}

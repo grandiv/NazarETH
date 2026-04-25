@@ -34,7 +34,7 @@ func main() {
 
 	var oracleClient *oracle.OracleClient
 	if cfg.SignerPrivateKey != "" {
-		oracleClient, err = oracle.New(cfg.RPCURL, cfg.SignerPrivateKey, cfg.OracleAddress, cfg.RegistryAddress, 84532)
+		oracleClient, err = oracle.New(cfg.RPCURL, cfg.SignerPrivateKey, cfg.OracleAddress, cfg.RegistryAddress, cfg.ChallengeAddress, 84532)
 		if err != nil {
 			log.Fatalf("init oracle: %v", err)
 		}
@@ -65,6 +65,7 @@ func main() {
 	mux.Handle("POST /api/goals/{id}/settle", authed(http.HandlerFunc(handler.HandleSettleGoal)))
 	mux.Handle("POST /api/goals/{id}/contract", authed(http.HandlerFunc(handler.HandleUpdateContractID)))
 	mux.Handle("POST /api/registry/sign", authed(http.HandlerFunc(handler.HandleRegistrySign)))
+	mux.Handle("POST /api/challenge/sync", authed(http.HandlerFunc(handler.HandleChallengeSync)))
 
 	corsMux := cors(mux)
 

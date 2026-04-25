@@ -1,13 +1,13 @@
 import { useAccount, useReadContract, useReadContracts } from 'wagmi'
 import {
-  ADDRESSES, NazarChallengeAbi,
+  ADDRESSES, NazarChallengeAbi, ACTIVITY_TYPES,
   formatUSDC, formatDeadline, CHALLENGE_STATUS,
 } from '../lib/contracts'
 
 const ACTIVITY_LABEL: Record<string, string> = {
-  '0xd5b59c4d76e21fede15a8d63e16db9d1ac9104e77339e2cfebfe85c1f2d62f72': '🏃 Running',
-  '0x9db3e7ab5e3cf96cef648e0e3e0571c5f1d4c5b4a2c5e8cb4b1a3f0e2cd8b49c': '🚴 Cycling',
-  '0x4e9b29e634f4c9e1db7e3f7a4c3d1b8a4b3e6f2c8a1d4e7b0c3f2a6e9d5b8c1': '🏊 Swimming',
+  [ACTIVITY_TYPES.running]:  '🏃 Running',
+  [ACTIVITY_TYPES.cycling]:  '🚴 Cycling',
+  [ACTIVITY_TYPES.swimming]: '🏊 Swimming',
 }
 
 const BPS = 10_000n

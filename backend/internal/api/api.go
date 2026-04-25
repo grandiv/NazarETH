@@ -159,7 +159,7 @@ func (a *API) HandleStravaCallback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, "db error")
 		return
 	}
-	http.Redirect(w, r, a.frontendURL+"/dashboard?strava=connected", http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf("%s/register?strava_athlete_id=%d", a.frontendURL, tr.Athlete.ID), http.StatusFound)
 }
 
 func (a *API) HandleHevyConnect(w http.ResponseWriter, r *http.Request) {
@@ -466,20 +466,27 @@ func (a *API) HandleRegistrySign(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		Wallet    string `json:"wallet"`
-		StravaID  uint64 `json:"strava_athlete_id"`
-		Nonce     uint64 `json:"nonce"`
-		Deadline  uint64 `json:"deadline"`
+		StravaID  string `json:"strava_athlete_id"`
+		Nonce     string `json:"nonce"`
+		Deadline  string `json:"deadline"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, 400, "invalid body")
 		return
 	}
-	if req.Wallet == "" || req.StravaID == 0 {
+	if req.Wallet == "" || req.StravaID == "" {
 		writeError(w, 400, "wallet and strava_athlete_id required")
 		return
 	}
+	stravaID, _ := strconv.ParseUint(req.StravaID, 10, 64)
+	nonce, _ := strconv.ParseUint(req.Nonce, 10, 64)
+	deadline, _ := strconv.ParseUint(req.Deadline, 10, 64)
+	if stravaID == 0 {
+		writeError(w, 400, "strava_athlete_id must be > 0")
+		return
+	}
 
-	sig, err := a.oracle.SignRegistryRegistration(common.HexToAddress(req.Wallet), req.StravaID, req.Nonce, req.Deadline)
+	sig, err := a.oracle.SignRegistryRegistration(common.HexToAddress(req.Wallet), stravaID, nonce, deadline)
 	if err != nil {
 		writeError(w, 500, "signing error: "+err.Error())
 		return
@@ -493,6 +500,79 @@ func (a *API) HandleRegistrySign(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]string{"status": "ok"})
+}
+
+func (a *API) HandleChallengeSync(w http.ResponseWriter, r *http.Request) {
+	if a.oracle == nil {
+		writeError(w, 500, "oracle not configured")
+		return
+	}
+	var req struct {
+		ChallengeID string `json:"challenge_id"`
+		Wallet      string `json:"wallet"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, 400, "invalid body")
+		return
+	}
+	if req.ChallengeID == "" || req.Wallet == "" {
+		writeError(w, 400, "challenge_id and wallet required")
+		return
+	}
+	challengeID, _ := strconv.ParseUint(req.ChallengeID, 10, 64)
+	if challengeID == 0 {
+		writeError(w, 400, "invalid challenge_id")
+		return
+	}
+	walletAddr := common.HexToAddress(req.Wallet)
+
+	wallet := auth.GetWalletFromContext(r.Context())
+	user, err := a.store.GetUserByWallet(wallet)
+	if err != nil {
+		writeError(w, 404, "user not found")
+		return
+	}
+
+	token, err := a.store.GetStravaToken(user.ID)
+	if err != nil {
+		writeError(w, 400, "strava not connected for this user")
+		return
+	}
+
+	_ = token
+
+	actualDistance, err := a.strava.FetchProgressForUser(r.Context(), user.ID, "distance", 0, time.Now().Unix())
+	if err != nil {
+		writeError(w, 500, "strava fetch error: "+err.Error())
+		return
+	}
+
+	targetDistance, err := a.oracle.GetChallengeTarget(r.Context(), challengeID)
+	if err != nil {
+		writeError(w, 500, "failed to read challenge target: "+err.Error())
+		return
+	}
+
+	progressBps := uint64(0)
+	if targetDistance > 0 {
+		progressBps = (actualDistance * 10000) / targetDistance
+	}
+	if progressBps > 10000 {
+		progressBps = 10000
+	}
+
+	txHash, err := a.oracle.SubmitProgress(r.Context(), walletAddr, challengeID, progressBps, uint64(time.Now().Unix()))
+	if err != nil {
+		writeError(w, 500, "oracle tx error: "+err.Error())
+		return
+	}
+
+	writeJSON(w, 200, map[string]interface{}{
+		"tx_hash":      txHash.Hex(),
+		"progress_bps": progressBps,
+		"actual_m":     actualDistance,
+		"target_m":     targetDistance,
+	})
 }
 
 func generateNonce() string {

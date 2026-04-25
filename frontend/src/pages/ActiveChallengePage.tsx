@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { baseSepolia } from 'wagmi/chains'
 import {
@@ -45,19 +45,19 @@ export default function ActiveChallengePage() {
 
   const { writeContract: approve, data: approveTx, isPending: approving } = useWriteContract()
   const { isSuccess: approveOk } = useWaitForTransactionReceipt({ hash: approveTx })
-  if (approveOk) refetchAllowance()
+  useEffect(() => { if (approveOk) refetchAllowance() }, [approveOk, refetchAllowance])
 
   const { writeContract: deposit, data: depositTx, isPending: depositing, error: depositErr } = useWriteContract()
   const { isSuccess: depositOk } = useWaitForTransactionReceipt({ hash: depositTx })
-  if (depositOk) { refetchId(); refetchChallenge(); refetchProgress() }
+  useEffect(() => { if (depositOk) { refetchId(); refetchChallenge(); refetchProgress() } }, [depositOk, refetchId, refetchChallenge, refetchProgress])
 
   const { writeContract: withdrawMilestone, data: withdrawTx, isPending: withdrawing, error: withdrawErr } = useWriteContract()
   const { isSuccess: withdrawOk } = useWaitForTransactionReceipt({ hash: withdrawTx })
-  if (withdrawOk) { refetchChallenge(); refetchProgress() }
+  useEffect(() => { if (withdrawOk) { refetchChallenge(); refetchProgress() } }, [withdrawOk, refetchChallenge, refetchProgress])
 
   const { writeContract: finalize, data: finalizeTx, isPending: finalizing, error: finalizeErr } = useWriteContract()
   const { isSuccess: finalizeOk } = useWaitForTransactionReceipt({ hash: finalizeTx })
-  if (finalizeOk) refetchChallenge()
+  useEffect(() => { if (finalizeOk) refetchChallenge() }, [finalizeOk, refetchChallenge])
 
   if (!isConnected) {
     return (
@@ -119,7 +119,7 @@ export default function ActiveChallengePage() {
     try {
       const token = localStorage.getItem('nazareth_token')
       if (!token) { setSyncMsg('Sign in first (Register page)'); setSyncing(false); return }
-      const res = await fetch(`${BACKEND_URL}/api/goals/0/progress`, {
+      const res = await fetch(`${BACKEND_URL}/api/challenge/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ challenge_id: String(challengeId), wallet: address }),

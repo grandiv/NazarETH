@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { baseSepolia } from 'wagmi/chains'
 import type { Page } from '../App'
@@ -61,7 +62,7 @@ export default function DashboardPage({ onNavigate }: Props) {
 
   const { writeContract: mintUsdc, data: mintTx, isPending: minting } = useWriteContract()
   const { isSuccess: mintOk } = useWaitForTransactionReceipt({ hash: mintTx, query: { enabled: !!mintTx } })
-  if (mintOk) refetchBalance()
+  useEffect(() => { if (mintOk) refetchBalance() }, [mintOk, refetchBalance])
 
   if (!isConnected) {
     return (
