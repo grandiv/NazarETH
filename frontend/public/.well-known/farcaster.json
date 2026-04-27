@@ -1,0 +1,20 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "NazarETH",
+    "iconUrl": "https://nazareth.izcy.tech/logo_nazareth.png",
+    "homeUrl": "https://nazareth.izcy.tech",
+    "splashImageUrl": "https://nazareth.izcy.tech/logo_nazareth.png",
+    "splashBackgroundColor": "#040B22",
+    "subtitle": "Stake. Train. Compete. Earn.",
+    "description": "Decentralized fitness commitment challenges on Base. Stake USDC, hit your Strava goals, earn it back.",
+    "primaryCategory": "health-fitness",
+    "tags": ["fitness", "defi", "base", "strava", "staking"],
+    "heroImageUrl": "https://nazareth.izcy.tech/logo_nazareth.png",
+    "tagline": "Stake. Train. Compete. Earn.",
+    "ogTitle": "NazarETH",
+    "ogDescription": "Stake. Train. Compete. Earn. Decentralized fitness commitments on Base.",
+    "ogImageUrl": "https://nazareth.izcy.tech/logo_nazareth.png",
+    "requiredChains": ["eip155:84532"]
+  }
+}
