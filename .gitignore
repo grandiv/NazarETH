@@ -20,4 +20,4 @@ backend/server.exe
 .DS_Store
 Thumbs.db
 *.swp
-*.swo
+*.swocontracts/broadcast/
