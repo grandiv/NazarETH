@@ -86,7 +86,7 @@ export default function NewChallengePage({ onNavigate }: Props) {
       <div className="card">
         <div className="form-group">
           <label className="form-label">Quick Presets</label>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {PRESETS.map(p => {
               const active = targetKm === p.km && durationMins === p.mins && stakeAmount === p.stake
               return (

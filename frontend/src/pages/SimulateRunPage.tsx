@@ -154,7 +154,7 @@ export default function SimulateRunPage({ onNavigate }: Props) {
           background: 'linear-gradient(135deg, var(--surface), rgba(252,76,2,0.04))',
           border: '1px solid rgba(252,76,2,0.15)',
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 14, marginBottom: 16 }}>
             <div>
               <div className="stat-label">Distance</div>
               <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--accent2)' }}>{formatDist(dist)}</div>

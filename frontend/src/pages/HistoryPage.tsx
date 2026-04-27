@@ -260,7 +260,7 @@ export default function HistoryPage() {
                   {showTracks[key] ? 'Hide Routes' : `Show ${challengeActivities.length} Route(s)`}
                 </button>
                 {showTracks[key] && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
                     {challengeActivities.map(a => (
                       <div key={a.id}>
                         <MiniMap encodedPolyline={a.summary_polyline} />

@@ -138,25 +138,27 @@ export default function DashboardPage({ onNavigate }: Props) {
         background: 'linear-gradient(135deg, var(--surface), rgba(252,76,2,0.04))',
         border: '1px solid rgba(252,76,2,0.15)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{
-            width: 42, height: 42, borderRadius: 12,
-            background: 'rgba(252,76,2,0.12)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 20,
-          }}>🚰</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>MockUSDC Faucet</div>
-            <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-              Mint 1,000 test USDC — free on devnet.
-              Current balance: <strong style={{ color: 'var(--accent2)' }}>
-                {usdcBalance !== undefined ? formatUSDC(usdcBalance as bigint) : '...'} USDC
-              </strong>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 42, height: 42, borderRadius: 12,
+              background: 'rgba(252,76,2,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 20,
+            }}>🚰</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>MockUSDC Faucet</div>
+              <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+                Mint 1,000 test USDC — free on devnet.
+                Current balance: <strong style={{ color: 'var(--accent2)' }}>
+                  {usdcBalance !== undefined ? formatUSDC(usdcBalance as bigint) : '...'} USDC
+                </strong>
+              </div>
             </div>
           </div>
           <button
             className="btn-primary"
-            style={{ whiteSpace: 'nowrap', padding: '10px 22px' }}
+            style={{ whiteSpace: 'nowrap', padding: '10px 22px', width: '100%' }}
             disabled={minting || !address}
             onClick={() => mintUsdc({
               address: ADDRESSES.MockUSDC,
@@ -181,17 +183,19 @@ export default function DashboardPage({ onNavigate }: Props) {
           background: 'linear-gradient(135deg, var(--surface), rgba(52,211,153,0.03))',
           border: '1px solid rgba(52,211,153,0.12)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              width: 42, height: 42, borderRadius: 12,
-              background: 'rgba(52,211,153,0.1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 20,
-            }}>👤</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>Get Started</div>
-              <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-                Register your Strava account to create challenges.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'stretch' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: 12,
+                background: 'rgba(52,211,153,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20,
+              }}>👤</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>Get Started</div>
+                <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+                  Register your Strava account to create challenges.
+                </div>
               </div>
             </div>
             <button className="btn-success" style={{ whiteSpace: 'nowrap' }} onClick={() => onNavigate('register')}>
@@ -206,17 +210,19 @@ export default function DashboardPage({ onNavigate }: Props) {
           background: 'linear-gradient(135deg, var(--surface), rgba(252,76,2,0.04))',
           border: '1px solid rgba(252,76,2,0.15)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              width: 42, height: 42, borderRadius: 12,
-              background: 'rgba(252,76,2,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 20,
-            }}>🎯</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>Create a Challenge</div>
-              <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-                Stake USDC and commit to a fitness goal.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'stretch' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: 12,
+                background: 'rgba(252,76,2,0.12)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20,
+              }}>🎯</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>Create a Challenge</div>
+                <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+                  Stake USDC and commit to a fitness goal.
+                </div>
               </div>
             </div>
             <button className="btn-primary" style={{ whiteSpace: 'nowrap' }} onClick={() => onNavigate('new-challenge')}>
@@ -248,7 +254,7 @@ export default function DashboardPage({ onNavigate }: Props) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginBottom: 16 }}>
             <div>
               <div className="stat-label">Staked</div>
               <div style={{ fontWeight: 700, fontSize: 16 }}>{formatUSDC((challenge as any).stakeAmount)} USDC</div>
