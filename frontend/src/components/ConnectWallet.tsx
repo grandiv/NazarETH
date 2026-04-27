@@ -1,11 +1,9 @@
-import { useState } from 'react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 
 export default function ConnectWallet() {
   const { address, isConnected } = useAccount()
   const { connect, connectors, isPending } = useConnect()
   const { disconnect } = useDisconnect()
-  const [showPicker, setShowPicker] = useState(false)
 
   if (isConnected && address) {
     return (
@@ -42,94 +40,35 @@ export default function ConnectWallet() {
     )
   }
 
-  const getLabel = (name: string) => {
-    if (name === 'WalletConnect') return 'MetaMask / WalletConnect'
-    if (name === 'Base Account') return 'Base Account'
-    if (name === 'Injected') return 'Browser Wallet'
-    return name
+  const handleConnect = () => {
+    const hasInjected = !!(window as any).ethereum
+    if (hasInjected) {
+      const inj = connectors.find(c => c.id === 'injected')
+      if (inj) return connect({ connector: inj })
+    }
+    const wc = connectors.find(c => c.id === 'walletConnect')
+    if (wc) return connect({ connector: wc })
   }
 
-  const connectorOrder = ['injected', 'walletConnect', 'baseAccount']
-
-  const sorted = [...connectors].sort((a, b) => {
-    const ai = connectorOrder.indexOf(a.id) ?? 99
-    const bi = connectorOrder.indexOf(b.id) ?? 99
-    return ai - bi
-  })
-
   return (
-    <div style={{ position: 'relative' }}>
-      <button
-        disabled={isPending}
-        onClick={() => setShowPicker(!showPicker)}
-        style={{
-          background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
-          border: 'none',
-          borderRadius: 8,
-          color: '#fff',
-          padding: '8px 18px',
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: isPending ? 'wait' : 'pointer',
-          fontFamily: 'inherit',
-          transition: 'all .15s ease',
-          boxShadow: '0 2px 8px rgba(5,75,255,0.3)',
-        }}
-      >
-        {isPending ? 'Connecting...' : 'Connect Wallet'}
-      </button>
-
-      {showPicker && (
-        <>
-          <div
-            onClick={() => setShowPicker(false)}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 998,
-            }}
-          />
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            marginTop: 6,
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 10,
-            padding: '6px 0',
-            minWidth: 200,
-            zIndex: 999,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-          }}>
-            {sorted.map((connector) => (
-              <button
-                key={connector.uid}
-                onClick={() => {
-                  connect({ connector })
-                  setShowPicker(false)
-                }}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text)',
-                  padding: '10px 16px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  transition: 'background .15s ease',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'none'}
-              >
-                {getLabel(connector.name)}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+    <button
+      disabled={isPending}
+      onClick={handleConnect}
+      style={{
+        background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
+        border: 'none',
+        borderRadius: 8,
+        color: '#fff',
+        padding: '8px 18px',
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: isPending ? 'wait' : 'pointer',
+        fontFamily: 'inherit',
+        transition: 'all .15s ease',
+        boxShadow: '0 2px 8px rgba(5,75,255,0.3)',
+      }}
+    >
+      {isPending ? 'Connecting...' : 'Connect Wallet'}
+    </button>
   )
 }
