@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useAccount } from 'wagmi'
 import { MapContainer, TileLayer, useMap, Polyline } from 'react-leaflet'
 import { useLeafletContext } from '@react-leaflet/core'
@@ -16,23 +16,20 @@ interface StravaActivity {
   summary_polyline: string
 }
 
-const HEX_RADIUS_M = 30
-const DEG_PER_M = 0.000009
-const HEX_R_LAT = HEX_RADIUS_M * DEG_PER_M
-const HEX_R_LNG = HEX_RADIUS_M * DEG_PER_M
-const HEX_H = HEX_R_LAT * Math.sqrt(3)
+const HEX_R = 0.00035
+const HEX_H = HEX_R * Math.sqrt(3)
+const HEX_W = HEX_R * 2
 
-function hexCenter(lat: number, lng: number): [number, number] {
-  const row = Math.round(lat / (HEX_H / 2))
-  const col = Math.round(lng / (HEX_R_LNG * 1.5))
-  const clat = row * (HEX_H / 2)
-  const clng = col * (HEX_R_LNG * 1.5)
-  return [clat, clng]
+function axialToLatCol(row: number, col: number): [number, number] {
+  const lat = row * HEX_H * 0.5
+  const lng = col * HEX_W * 0.75
+  return [lat, lng]
 }
 
-function hexKey(lat: number, lng: number): string {
-  const [clat, clng] = hexCenter(lat, lng)
-  return `${clat.toFixed(7)},${clng.toFixed(7)}`
+function latLngToAxial(lat: number, lng: number): [number, number] {
+  const col = Math.round(lng / (HEX_W * 0.75))
+  const row = Math.round(lat / (HEX_H * 0.5))
+  return [row, col]
 }
 
 function hexVertices(clat: number, clng: number): [number, number][] {
@@ -40,32 +37,28 @@ function hexVertices(clat: number, clng: number): [number, number][] {
   for (let i = 0; i < 6; i++) {
     const angle = (Math.PI / 180) * (60 * i - 30)
     pts.push([
-      clat + HEX_R_LAT * Math.sin(angle),
-      clng + HEX_R_LNG * Math.cos(angle),
+      clat + HEX_R * Math.sin(angle),
+      clng + HEX_R * Math.cos(angle),
     ])
   }
   return pts
 }
 
-function interpolateRoute(coords: [number, number][], stepM: number): [number, number][] {
+function interpolateRoute(coords: [number, number][], stepDeg: number): [number, number][] {
   if (coords.length < 2) return coords
   const result: [number, number][] = [coords[0]]
-  let carry = 0
   for (let i = 1; i < coords.length; i++) {
     const [lat1, lng1] = coords[i - 1]
     const [lat2, lng2] = coords[i]
     const dLat = lat2 - lat1
     const dLng = lng2 - lng1
-    const dist = Math.sqrt((dLat / DEG_PER_M) ** 2 + (dLng / DEG_PER_M) ** 2)
-    if (dist < 0.1) continue
-    const steps = Math.ceil((dist - carry) / stepM)
-    for (let s = 1; s <= steps; s++) {
-      const t = (carry + s * stepM) / dist
-      if (t > 1) break
+    const dist = Math.sqrt(dLat * dLat + dLng * dLng)
+    if (dist < stepDeg * 0.1) continue
+    const steps = Math.ceil(dist / stepDeg)
+    for (let s = 1; s < steps; s++) {
+      const t = s / steps
       result.push([lat1 + dLat * t, lng1 + dLng * t])
     }
-    carry = carry + steps * stepM - dist
-    if (carry < 0) carry = 0
     result.push(coords[i])
   }
   return result
@@ -79,52 +72,80 @@ function FitBoundsAll({ bounds }: { bounds: L.LatLngBoundsExpression | null }) {
   return null
 }
 
-const GLOW_COLORS = [
-  { fill: '#00ff88', border: '#00ff8866' },
-  { fill: '#00ee7c', border: '#00ee7c66' },
-  { fill: '#00dd70', border: '#00dd7066' },
-  { fill: '#00cc64', border: '#00cc6466' },
-  { fill: '#00bb58', border: '#00bb5866' },
-  { fill: '#00aa4c', border: '#00aa4c66' },
-  { fill: '#009940', border: '#00994066' },
-  { fill: '#008834', border: '#00883466' },
-]
-
-function HexGridLayer({ grid, maxCount }: { grid: Map<string, number>; maxCount: number }) {
+function TerritoryGridLayer({ claimedCells, maxCount, bounds }: {
+  claimedCells: Map<string, number>
+  maxCount: number
+  bounds: [[number, number], [number, number]] | null
+}) {
   const context = useLeafletContext()
+  const groupRef = useRef<L.LayerGroup | null>(null)
 
-  const draw = useCallback(() => {
+  useEffect(() => {
+    if (!bounds) return
     const map = context.map
 
-    map.eachLayer((layer: any) => {
-      if (layer._hexGrid) map.removeLayer(layer)
-    })
+    if (groupRef.current) {
+      map.removeLayer(groupRef.current)
+    }
 
     const group = L.layerGroup()
     ;(group as any)._hexGrid = true
+    groupRef.current = group
 
-    grid.forEach((count, key) => {
-      const [clat, clng] = key.split(',').map(Number)
-      const vertices = hexVertices(clat, clng)
-      const idx = maxCount <= 1 ? 0 : Math.min(Math.floor((count / maxCount) * GLOW_COLORS.length), GLOW_COLORS.length - 1)
-      const color = GLOW_COLORS[idx]
-      L.polygon(vertices as L.LatLngExpression[], {
-        color: color.border,
-        weight: 1.5,
-        fillColor: color.fill,
-        fillOpacity: 0.55,
-        opacity: 0.7,
-      }).addTo(group)
-    })
+    const [minLat, minLng] = bounds[0]
+    const [maxLat, maxLng] = bounds[1]
+
+    const padLat = (maxLat - minLat) * 0.15
+    const padLng = (maxLng - minLng) * 0.15
+    const eMinLat = minLat - padLat
+    const eMaxLat = maxLat + padLat
+    const eMinLng = minLng - padLng
+    const eMaxLng = maxLng + padLng
+
+    const startCol = Math.floor(eMinLng / (HEX_W * 0.75)) - 1
+    const endCol = Math.ceil(eMaxLng / (HEX_W * 0.75)) + 1
+    const startRow = Math.floor(eMinLat / (HEX_H * 0.5)) - 1
+    const endRow = Math.ceil(eMaxLat / (HEX_H * 0.5)) + 1
+
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
+        const [clat, clng] = axialToLatCol(row, col)
+        if (clat < eMinLat - HEX_R || clat > eMaxLat + HEX_R) continue
+        if (clng < eMinLng - HEX_R || clng > eMaxLng + HEX_R) continue
+
+        const key = `${row},${col}`
+        const count = claimedCells.get(key) ?? 0
+        const vertices = hexVertices(clat, clng)
+
+        if (count > 0) {
+          const idx = maxCount <= 1 ? 0 : Math.min(Math.floor((count / maxCount) * 6), 5)
+          const hue = 150 - idx * 8
+          const lightness = 55 - idx * 4
+          const fill = `hsl(${hue}, 100%, ${lightness}%)`
+          const border = `hsla(${hue}, 100%, ${lightness + 15}%, 0.6)`
+
+          L.polygon(vertices as L.LatLngExpression[], {
+            color: border,
+            weight: 1,
+            fillColor: fill,
+            fillOpacity: 0.65,
+            opacity: 0.5,
+          }).addTo(group)
+        } else {
+          L.polygon(vertices as L.LatLngExpression[], {
+            color: 'rgba(0, 255, 136, 0.06)',
+            weight: 0.5,
+            fillColor: 'rgba(0, 255, 136, 0.02)',
+            fillOpacity: 1,
+            opacity: 1,
+          }).addTo(group)
+        }
+      }
+    }
 
     group.addTo(map)
     return () => { map.removeLayer(group) }
-  }, [context, grid, maxCount])
-
-  useEffect(() => {
-    const cleanup = draw()
-    return cleanup
-  }, [draw])
+  }, [context.map, claimedCells, maxCount, bounds])
 
   return null
 }
@@ -144,52 +165,51 @@ export default function TerritoryPage() {
       .catch(() => {})
   }, [])
 
-  const grid = useMemo(() => {
+  const { claimedCells, maxCount, bounds } = useMemo(() => {
     const cells = new Map<string, number>()
-    const runActivities = activities.filter(
+    const runActs = activities.filter(
       a => a.summary_polyline && (a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim')
     )
 
-    for (const act of runActivities) {
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity
+
+    for (const act of runActs) {
       const rawCoords = polyline.decode(act.summary_polyline) as [number, number][]
-      const coords = interpolateRoute(rawCoords, 15)
+      const coords = interpolateRoute(rawCoords, HEX_R * 0.5)
       for (const [lat, lng] of coords) {
-        const key = hexKey(lat, lng)
+        const [row, col] = latLngToAxial(lat, lng)
+        const key = `${row},${col}`
         cells.set(key, (cells.get(key) ?? 0) + 1)
+        const [clat, clng] = axialToLatCol(row, col)
+        if (clat < minLat) minLat = clat
+        if (clat > maxLat) maxLat = clat
+        if (clng < minLng) minLng = clng
+        if (clng > maxLng) maxLng = clng
       }
     }
-    return cells
+
+    const max = Math.max(...Array.from(cells.values()), 1)
+    let b: [[number, number], [number, number]] | null = null
+    if (cells.size > 0) {
+      b = [[minLat - 0.001, minLng - 0.002], [maxLat + 0.001, maxLng + 0.002]]
+    }
+    return { claimedCells: cells, maxCount: max, bounds: b }
   }, [activities])
 
-  const totalCells = grid.size
-  const maxCount = Math.max(...Array.from(grid.values()), 1)
-  const hexAreaKm2 = (Math.sqrt(3) / 2 * (HEX_RADIUS_M * HEX_RADIUS_M)) / 1_000_000
-  const totalAreaKm2 = totalCells * hexAreaKm2
-
-  const bounds = useMemo(() => {
-    if (grid.size === 0) return null
-    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity
-    grid.forEach((_, key) => {
-      const [clat, clng] = key.split(',').map(Number)
-      minLat = Math.min(minLat, clat - HEX_R_LAT)
-      maxLat = Math.max(maxLat, clat + HEX_R_LAT)
-      minLng = Math.min(minLng, clng - HEX_R_LNG)
-      maxLng = Math.max(maxLng, clng + HEX_R_LNG)
-    })
-    return [[minLat - 0.001, minLng - 0.002], [maxLat + 0.001, maxLng + 0.002]] as L.LatLngBoundsExpression
-  }, [grid])
+  const totalCells = claimedCells.size
+  const hexAreaM2 = Math.sqrt(3) / 2 * (HEX_R / 0.000009) ** 2
+  const totalAreaKm2 = (totalCells * hexAreaM2) / 1_000_000
+  const runActivities = activities.filter(a => a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim')
 
   if (!isConnected) return (
     <div className="card error-box">Connect your wallet to view territory.</div>
   )
 
-  const runActivities = activities.filter(a => a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim')
-
   return (
     <div style={{ maxWidth: 900 }}>
       <h2 style={{ color: 'var(--accent2)', marginBottom: 6 }}>Your Territory</h2>
       <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 20 }}>
-        Every hex you've explored through your runs. Claim more land by completing challenges.
+        Every hex you've explored. Dark cells are unclaimed — run through them to expand your land.
       </p>
 
       <div className="stat-grid" style={{ marginBottom: 20 }}>
@@ -215,33 +235,36 @@ export default function TerritoryPage() {
         </div>
       </div>
 
-      {totalCells > 0 ? (
+      {bounds ? (
         <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 12, border: '1px solid var(--border)' }}>
-          <div style={{ filter: 'contrast(1.1) saturate(1.2)' }}>
-            <MapContainer center={[0, 0]} zoom={15} style={{ height: 520, width: '100%', background: '#080810' }}
-              attributionControl={false} zoomControl={true} preferCanvas={true}>
-              <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-              <FitBoundsAll bounds={bounds} />
-              <HexGridLayer grid={grid} maxCount={maxCount} />
-              {runActivities.filter(a => a.summary_polyline).slice(0, 20).map(a => {
-                const coords = polyline.decode(a.summary_polyline) as [number, number][]
-                if (coords.length < 2) return null
-                return (
-                  <Polyline
-                    key={a.id}
-                    positions={coords}
-                    pathOptions={{ color: '#FC4C02', weight: 2, opacity: 0.4 }}
-                  />
-                )
-              })}
-            </MapContainer>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, padding: '12px 16px', background: '#111', borderTop: '1px solid #1a1a2a' }}>
-            <span style={{ fontSize: 11, color: '#555' }}>Explored once</span>
-            {GLOW_COLORS.map((c, i) => (
-              <div key={i} style={{ width: 22, height: 14, borderRadius: 3, background: c.fill, boxShadow: `0 0 6px ${c.fill}44` }} />
-            ))}
-            <span style={{ fontSize: 11, color: '#555' }}>Explored many</span>
+          <MapContainer center={[0, 0]} zoom={15} style={{ height: 520, width: '100%', background: '#080810' }}
+            attributionControl={false} zoomControl={true} preferCanvas={true}>
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+            <FitBoundsAll bounds={bounds} />
+            <TerritoryGridLayer claimedCells={claimedCells} maxCount={maxCount} bounds={bounds} />
+            {runActivities.filter(a => a.summary_polyline).slice(0, 20).map(a => {
+              const coords = polyline.decode(a.summary_polyline) as [number, number][]
+              if (coords.length < 2) return null
+              return (
+                <Polyline
+                  key={a.id}
+                  positions={coords}
+                  pathOptions={{ color: '#FC4C02', weight: 2, opacity: 0.35 }}
+                />
+              )
+            })}
+          </MapContainer>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#111', borderTop: '1px solid #1a1a2a' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 18, height: 14, borderRadius: 3, background: 'rgba(0, 255, 136, 0.05)', border: '1px solid rgba(0,255,136,0.1)' }} />
+              <span style={{ fontSize: 11, color: '#555' }}>Unclaimed</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {['hsl(150,100%,55%)', 'hsl(142,100%,51%)', 'hsl(134,100%,47%)', 'hsl(126,100%,43%)', 'hsl(118,100%,39%)', 'hsl(110,100%,35%)'].map((c, i) => (
+                <div key={i} style={{ width: 20, height: 14, borderRadius: 3, background: c }} />
+              ))}
+            </div>
+            <span style={{ fontSize: 11, color: '#555' }}>Claimed</span>
           </div>
         </div>
       ) : (
