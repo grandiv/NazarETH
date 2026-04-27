@@ -52,7 +52,7 @@ Core commitment protocol is fully onchain:
 - NazarOracle: Role-based progress submission from trusted backend oracle
 - NazarChallenge: Escrow, milestone withdrawals, graduated slashing
 - NazarTreasury: Slashed fund management
-- NazarYield: Pluggable yield vault integration
+- NazarYield: Pluggable yield vault integration (MockMorpho with 5% APY accrual for demo)
 - MockUSDC: Permissionless testnet token faucet
 
 All financial logic (staking, withdrawals, slashing, treasury distribution) executes entirely on-chain via 6 Solidity contracts. No off-chain custody.
@@ -167,7 +167,7 @@ Full-time for the past week. Part-time ideation and research for 2 months prior.
 
 2. Simulate Run with GPS map drawing: An interactive Leaflet map where you draw a running route, and we generate a real GPX file with timestamps at realistic running pace, upload it to Strava as a legitimate activity — perfect for demo and testing.
 
-3. 6-contract modular architecture: Instead of a monolithic contract, we separated concerns into Registry (identity), Oracle (verification), Challenge (escrow), Treasury (fund management), and Yield (revenue layer) — each independently upgradeable and testable.
+3. 6-contract modular architecture: Instead of a monolithic contract, we separated concerns into Registry (identity), Oracle (verification), Challenge (escrow), Treasury (fund management), and Yield (MockMorpho revenue layer with 5% APY accrual) — each independently upgradeable and testable.
 
 4. Milestone-based withdrawals: Rather than all-or-nothing settlement, users can withdraw 10% of their stake for every 10% of progress — rewarding partial effort, not just binary success.
 
@@ -210,12 +210,12 @@ Pre-revenue. Revenue model:
 
 ### Smart contract addresses (Base Sepolia)
 ```
-MockUSDC:       0x6118c512a606d55d2b466727e8f26E60233860dd
-NazarRegistry:  0x811a837bdaa8D27967Db87af87C54291B33B6bae
-NazarOracle:    0x30D282C7bd12467714Bb922C62f712bC4FC0002f
-NazarYield:     0x7b5d6f5ff516F1d7d6EF0E9DD9cfBA79A5e8f12d
-NazarTreasury:  0x1CFA02Ab6649a679435cB9C1CafbEA6CE0F92e66
-NazarChallenge: 0x0c1D52dAe67E3136729Ccb26a4ba64648f5eCFda
+MockUSDC:       0x174aA8946271A986FdE7cFEd2cc9d1b27d827Cc3
+NazarRegistry:  0x3E3e9CBF18Cca0341D174078A71546Bafe7c1D25
+NazarOracle:    0x44def09596B86eb2A41B61BfcA737E038cdd24F7
+MockMorpho:     0x30Ae9eA7bc8548A67F055793B5399d749573fB09
+NazarTreasury:  0xf7Cb4524AB940FF719d2b2E4584A094Cb9CB3213
+NazarChallenge: 0xab1FacE87567959eed4E42842A0f14209Be5C671
 ```
 
 ### Why do you want to join Base Batches?*

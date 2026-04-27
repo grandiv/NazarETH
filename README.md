@@ -49,7 +49,7 @@ NazarETH bridges the gap between ambition and action by adding real financial ac
 | **NazarOracle** | Receives progress submissions from oracle backend |
 | **NazarChallenge** | Challenge lifecycle: create → deposit → withdraw → finalize |
 | **NazarTreasury** | Receives slashed funds from failed challenges |
-| **NazarYield** | Yield vault integration (pluggable Morpho/Aave layer) |
+| **MockMorpho** | Yield vault with 5% APY accrual (pluggable Morpho/Aave layer) |
 
 ### Backend (Golang)
 
@@ -112,12 +112,12 @@ Get Base Sepolia ETH from the [CDP Faucet](https://portal.cdp.coinbase.com/produ
 
 | Contract | Address |
 |----------|---------|
-| MockUSDC | `0x6118c512a606d55d2b466727e8f26E60233860dd` |
-| NazarRegistry | `0x811a837bdaa8D27967Db87af87C54291B33B6bae` |
-| NazarOracle | `0x30D282C7bd12467714Bb922C62f712bC4FC0002f` |
-| NazarYield | `0x7b5d6f5ff516F1d7d6EF0E9DD9cfBA79A5e8f12d` |
-| NazarTreasury | `0x1CFA02Ab6649a679435cB9C1CafbEA6CE0F92e66` |
-| NazarChallenge | `0x0c1D52dAe67E3136729Ccb26a4ba64648f5eCFda` |
+| MockUSDC | `0x174aA8946271A986FdE7cFEd2cc9d1b27d827Cc3` |
+| NazarRegistry | `0x3E3e9CBF18Cca0341D174078A71546Bafe7c1D25` |
+| NazarOracle | `0x44def09596B86eb2A41B61BfcA737E038cdd24F7` |
+| MockMorpho | `0x30Ae9eA7bc8548A67F055793B5399d749573fB09` |
+| NazarTreasury | `0xf7Cb4524AB940FF719d2b2E4584A094Cb9CB3213` |
+| NazarChallenge | `0xab1FacE87567959eed4E42842A0f14209Be5C671` |
 
 Admin/Oracle deployer: `0x40C3DD9a3aA86206655F14115897227f302C8B8A`
 
