@@ -40,25 +40,56 @@ export default function ConnectWallet() {
     )
   }
 
+  if (connectors.length === 1) {
+    return (
+      <button
+        disabled={isPending}
+        onClick={() => connect({ connector: connectors[0] })}
+        style={{
+          background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
+          border: 'none',
+          borderRadius: 8,
+          color: '#fff',
+          padding: '8px 18px',
+          fontSize: 13,
+          fontWeight: 700,
+          cursor: isPending ? 'wait' : 'pointer',
+          fontFamily: 'inherit',
+          transition: 'all .15s ease',
+          boxShadow: '0 2px 8px rgba(5,75,255,0.3)',
+        }}
+      >
+        {isPending ? 'Connecting...' : 'Connect Wallet'}
+      </button>
+    )
+  }
+
   return (
-    <button
-      disabled={isPending}
-      onClick={() => connect({ connector: connectors[0] })}
-      style={{
-        background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
-        border: 'none',
-        borderRadius: 8,
-        color: '#fff',
-        padding: '8px 18px',
-        fontSize: 13,
-        fontWeight: 700,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        transition: 'all .15s ease',
-        boxShadow: '0 2px 8px rgba(5,75,255,0.3)',
-      }}
-    >
-      {isPending ? 'Connecting...' : 'Connect Wallet'}
-    </button>
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      {connectors.map((connector) => (
+        <button
+          key={connector.uid}
+          disabled={isPending}
+          onClick={() => connect({ connector })}
+          style={{
+            background: connector.name === 'Base Account'
+              ? 'linear-gradient(135deg, #0052FF, #3d7aff)'
+              : 'linear-gradient(135deg, #054BFF, #3d7aff)',
+            border: connector.name === 'Base Account' ? '2px solid #0052FF' : '1px solid var(--border)',
+            borderRadius: 8,
+            color: '#fff',
+            padding: connector.name === 'Base Account' ? '7px 14px' : '7px 12px',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: isPending ? 'wait' : 'pointer',
+            fontFamily: 'inherit',
+            transition: 'all .15s ease',
+            boxShadow: connector.name === 'Base Account' ? '0 2px 8px rgba(0,82,255,0.4)' : 'none',
+          }}
+        >
+          {isPending ? 'Connecting...' : connector.name === 'Base Account' ? 'Base' : connector.name}
+        </button>
+      ))}
+    </div>
   )
 }
