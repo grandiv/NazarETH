@@ -61,7 +61,7 @@ export default function NewChallengePage({ onNavigate }: Props) {
       <div className="card animate-in" style={{ textAlign: 'center', padding: 48 }}>
         <div style={{
           width: 64, height: 64, borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(252,76,2,0.15), rgba(255,126,58,0.1))',
+          background: 'linear-gradient(135deg, rgba(5,75,255,0.15), rgba(61,122,255,0.1))',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 16px', fontSize: 28,
         }}>🏆</div>
@@ -94,7 +94,7 @@ export default function NewChallengePage({ onNavigate }: Props) {
                   style={{
                     flex: 1, padding: '10px 8px', borderRadius: 10, textAlign: 'center',
                     border: active ? '2px solid var(--strava)' : '1px solid var(--border)',
-                    background: active ? 'rgba(252,76,2,0.08)' : 'var(--bg)',
+                    background: active ? 'rgba(5,75,255,0.08)' : 'var(--bg)',
                     color: active ? 'var(--accent2)' : 'var(--muted)',
                     fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                   }}>

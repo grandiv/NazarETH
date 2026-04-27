@@ -69,7 +69,7 @@ export default function DashboardPage({ onNavigate }: Props) {
       <div className="card animate-in" style={{ textAlign: 'center', padding: '56px 32px' }}>
         <div style={{
           width: 72, height: 72, borderRadius: 20,
-          background: 'linear-gradient(135deg, rgba(252,76,2,0.15), rgba(252,76,2,0.05))',
+          background: 'linear-gradient(135deg, rgba(5,75,255,0.15), rgba(5,75,255,0.05))',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 20px', fontSize: 32,
         }}>⛓️</div>
@@ -77,8 +77,7 @@ export default function DashboardPage({ onNavigate }: Props) {
           Welcome to <span style={{ color: 'var(--accent2)' }}>NazarETH</span>
         </h1>
         <p style={{ color: 'var(--text2)', maxWidth: 420, margin: '0 auto 8px', lineHeight: 1.6 }}>
-          Stake USDC against your Strava fitness goals. Hit your target — keep your funds.
-          Miss it — lose the unearned portion.
+          Stake. Train. Compete. Earn.
         </p>
         <p style={{ color: 'var(--muted)', fontSize: 13 }}>
           Connect your wallet to get started.
@@ -135,14 +134,14 @@ export default function DashboardPage({ onNavigate }: Props) {
       </div>
 
       <div className="card animate-in" style={{
-        background: 'linear-gradient(135deg, var(--surface), rgba(252,76,2,0.04))',
-        border: '1px solid rgba(252,76,2,0.15)',
+        background: 'linear-gradient(135deg, var(--surface), rgba(5,75,255,0.04))',
+        border: '1px solid rgba(5,75,255,0.15)',
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
               width: 42, height: 42, borderRadius: 12,
-              background: 'rgba(252,76,2,0.12)',
+              background: 'rgba(5,75,255,0.12)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 20,
             }}>🚰</div>
@@ -207,14 +206,14 @@ export default function DashboardPage({ onNavigate }: Props) {
 
       {isRegistered && (!challengeId || challengeId === 0n) && (
         <div className="card animate-in" style={{
-          background: 'linear-gradient(135deg, var(--surface), rgba(252,76,2,0.04))',
-          border: '1px solid rgba(252,76,2,0.15)',
+          background: 'linear-gradient(135deg, var(--surface), rgba(5,75,255,0.04))',
+          border: '1px solid rgba(5,75,255,0.15)',
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'stretch' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{
                 width: 42, height: 42, borderRadius: 12,
-                background: 'rgba(252,76,2,0.12)',
+                background: 'rgba(5,75,255,0.12)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 20,
               }}>🎯</div>
@@ -274,7 +273,7 @@ export default function DashboardPage({ onNavigate }: Props) {
               width: `${Math.min(100, Number(progressBps) / 100)}%`,
               background: progressBps >= 10000n
                 ? 'linear-gradient(90deg, #10b981, #34d399)'
-                : 'linear-gradient(90deg, #FC4C02, #ff7e3a)',
+                : 'linear-gradient(90deg, #054BFF, #3d7aff)',
             }} />
           </div>
 

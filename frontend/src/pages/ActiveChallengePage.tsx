@@ -112,7 +112,7 @@ export default function ActiveChallengePage() {
 
   const statusConfig: Record<number, { color: string; bg: string }> = {
     1: { color: 'var(--warn)', bg: 'rgba(251,191,36,0.08)' },
-    2: { color: 'var(--accent2)', bg: 'rgba(252,76,2,0.08)' },
+    2: { color: 'var(--accent2)', bg: 'rgba(5,75,255,0.08)' },
     3: { color: 'var(--success)', bg: 'rgba(52,211,153,0.08)' },
   }
 
@@ -221,7 +221,7 @@ export default function ActiveChallengePage() {
             width: `${Math.min(100, Number(progressBps) / 100)}%`,
             background: progressBps >= 10000n
               ? 'linear-gradient(90deg, #10b981, #34d399)'
-              : 'linear-gradient(90deg, #FC4C02, #ff7e3a)',
+              : 'linear-gradient(90deg, #054BFF, #3d7aff)',
           }} />
         </div>
 
@@ -321,7 +321,7 @@ export default function ActiveChallengePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10,
-              background: 'rgba(252,76,2,0.1)',
+              background: 'rgba(5,75,255,0.1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 16,
             }}>🔄</div>

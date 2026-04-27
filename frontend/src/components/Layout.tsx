@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Page } from '../App'
 import ConnectWallet from './ConnectWallet'
+import GuideModal from './GuideModal'
 
 async function addBaseSepoliaToMetaMask() {
   await (window as any).ethereum?.request({
@@ -34,11 +35,24 @@ interface Props {
 
 export default function Layout({ currentPage, onNavigate, children, banner }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
+
+  const showGuide = !localStorage.getItem('nazareth_guide_seen')
+  useState(() => {
+    if (showGuide) setGuideOpen(true)
+  })
+
+  function handleClose() {
+    setGuideOpen(false)
+    localStorage.setItem('nazareth_guide_seen', '1')
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <GuideModal open={guideOpen} onClose={handleClose} />
+
       <header style={{
-        background: 'linear-gradient(180deg, #1a1a24 0%, var(--surface) 100%)',
+        background: 'linear-gradient(180deg, #0a1535 0%, var(--surface) 100%)',
         borderBottom: '1px solid var(--border)',
         padding: '0 16px',
         display: 'flex',
@@ -50,13 +64,7 @@ export default function Layout({ currentPage, onNavigate, children, banner }: Pr
         backdropFilter: 'blur(12px)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 16, flexShrink: 0 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: 'linear-gradient(135deg, #FC4C02, #ff7e3a)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 800, fontSize: 13, color: '#fff',
-            boxShadow: '0 2px 8px rgba(252,76,2,0.3)',
-          }}>N</div>
+          <img src="/logo_nazareth.png" alt="N" style={{ width: 30, height: 30, borderRadius: 8 }} />
           <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-0.02em', color: '#fff' }}>
             Nazar<span style={{ color: 'var(--accent2)' }}>ETH</span>
           </span>
@@ -71,9 +79,9 @@ export default function Layout({ currentPage, onNavigate, children, banner }: Pr
                 onClick={() => onNavigate(item.id)}
                 className="nav-btn"
                 style={{
-                  background: active ? 'rgba(252,76,2,0.12)' : 'transparent',
+                  background: active ? 'rgba(5,75,255,0.12)' : 'transparent',
                   color: active ? 'var(--accent2)' : 'var(--muted)',
-                  borderBottom: active ? '2px solid var(--strava)' : '2px solid transparent',
+                  borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
                 }}
               >
                 <span style={{ marginRight: 4 }}>{item.icon}</span>
@@ -84,6 +92,13 @@ export default function Layout({ currentPage, onNavigate, children, banner }: Pr
         </nav>
 
         <div className="header-actions">
+          <button
+            onClick={() => setGuideOpen(true)}
+            className="btn-chain"
+            title="How to use"
+          >
+            ?
+          </button>
           <button
             onClick={addBaseSepoliaToMetaMask}
             className="btn-chain"
@@ -129,7 +144,7 @@ export default function Layout({ currentPage, onNavigate, children, banner }: Pr
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     width: '100%', padding: '14px 20px',
-                    background: active ? 'rgba(252,76,2,0.1)' : 'transparent',
+                    background: active ? 'rgba(5,75,255,0.1)' : 'transparent',
                     color: active ? 'var(--accent2)' : 'var(--text2)',
                     border: 'none', borderBottom: '1px solid var(--border)',
                     fontSize: 15, fontWeight: active ? 700 : 500,
@@ -141,8 +156,11 @@ export default function Layout({ currentPage, onNavigate, children, banner }: Pr
                 </button>
               )
             })}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)' }}>
-              <button onClick={addBaseSepoliaToMetaMask} className="btn-chain" style={{ marginBottom: 10, width: '100%', padding: '10px 14px' }}>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+              <button onClick={() => { setGuideOpen(true); setMenuOpen(false) }} className="btn-chain" style={{ flex: 1, padding: '10px 14px' }}>
+                ? Guide
+              </button>
+              <button onClick={addBaseSepoliaToMetaMask} className="btn-chain" style={{ flex: 1, padding: '10px 14px' }}>
                 + Add Base Sepolia
               </button>
             </div>
@@ -170,7 +188,7 @@ export default function Layout({ currentPage, onNavigate, children, banner }: Pr
         fontSize: 11,
         borderTop: '1px solid var(--border)',
       }}>
-        NazarETH · Built on Base · Base Sepolia (84532)
+        NazarETH · Built on Base · Stake. Train. Compete. Earn.
       </footer>
     </div>
   )

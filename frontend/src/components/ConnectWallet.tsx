@@ -45,7 +45,7 @@ export default function ConnectWallet() {
       disabled={isPending}
       onClick={() => connect({ connector: connectors[0] })}
       style={{
-        background: 'linear-gradient(135deg, #FC4C02, #ff7e3a)',
+        background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
         border: 'none',
         borderRadius: 8,
         color: '#fff',
@@ -55,7 +55,7 @@ export default function ConnectWallet() {
         cursor: 'pointer',
         fontFamily: 'inherit',
         transition: 'all .15s ease',
-        boxShadow: '0 2px 8px rgba(252,76,2,0.3)',
+        boxShadow: '0 2px 8px rgba(5,75,255,0.3)',
       }}
     >
       {isPending ? 'Connecting...' : 'Connect Wallet'}

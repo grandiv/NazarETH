@@ -38,7 +38,7 @@ function MiniMap({ encodedPolyline }: { encodedPolyline: string }) {
       attributionControl={false} zoomControl={false} dragging={false} scrollWheelZoom={false}
       doubleClickZoom={false} touchZoom={false}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-      <Polyline positions={coords} pathOptions={{ color: '#FC4C02', weight: 3, opacity: 0.9 }} />
+      <Polyline positions={coords} pathOptions={{ color: '#054BFF', weight: 3, opacity: 0.9 }} />
       <FitBounds coords={coords} />
     </MapContainer>
   )
@@ -220,7 +220,7 @@ export default function HistoryPage() {
                 width: `${Math.min(100, pct)}%`,
                 background: progressBps >= 10000n
                   ? 'linear-gradient(90deg, #10b981, #34d399)'
-                  : 'linear-gradient(90deg, #FC4C02, #ff7e3a)',
+                  : 'linear-gradient(90deg, #054BFF, #3d7aff)',
                 transition: 'width .3s',
                 borderRadius: 6,
               }} />

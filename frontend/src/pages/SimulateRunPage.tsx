@@ -142,7 +142,7 @@ export default function SimulateRunPage({ onNavigate }: Props) {
         <MapContainer center={CENTER} zoom={14} style={{ height: 380, width: '100%' }}
           attributionControl={false}>
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <Polyline positions={points} pathOptions={{ color: '#FC4C02', weight: 4, opacity: 0.85 }} />
+          <Polyline positions={points} pathOptions={{ color: '#054BFF', weight: 4, opacity: 0.85 }} />
           <MapClickHandler onMapClick={addPoint} />
         </MapContainer>
       </div>
@@ -151,8 +151,8 @@ export default function SimulateRunPage({ onNavigate }: Props) {
 
       {points.length >= 2 && (
         <div className="card" style={{
-          background: 'linear-gradient(135deg, var(--surface), rgba(252,76,2,0.04))',
-          border: '1px solid rgba(252,76,2,0.15)',
+          background: 'linear-gradient(135deg, var(--surface), rgba(5,75,255,0.04))',
+          border: '1px solid rgba(5,75,255,0.15)',
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 14, marginBottom: 16 }}>
             <div>

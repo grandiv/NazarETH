@@ -31,8 +31,8 @@ function WrongChainBanner() {
   const { switchChain, isPending } = useSwitchChain()
   return (
     <div style={{
-      background: 'linear-gradient(90deg, rgba(252,76,2,0.08), rgba(252,76,2,0.15))',
-      borderBottom: '1px solid rgba(252,76,2,0.25)',
+      background: 'linear-gradient(90deg, rgba(5,75,255,0.08), rgba(5,75,255,0.15))',
+      borderBottom: '1px solid rgba(5,75,255,0.25)',
       padding: '10px 28px',
       display: 'flex',
       alignItems: 'center',
@@ -40,7 +40,7 @@ function WrongChainBanner() {
     }}>
       <div style={{
         width: 28, height: 28, borderRadius: 8,
-        background: 'rgba(252,76,2,0.15)',
+        background: 'rgba(5,75,255,0.15)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 14,
       }}>
@@ -56,7 +56,7 @@ function WrongChainBanner() {
         disabled={isPending}
         onClick={() => switchChain({ chainId: baseSepolia.id })}
         style={{
-          background: 'linear-gradient(135deg, #FC4C02, #ff7e3a)',
+          background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
           border: 'none',
           borderRadius: 8,
           color: '#fff',

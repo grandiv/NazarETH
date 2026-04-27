@@ -152,7 +152,7 @@ export default function TerritoryPage() {
               const coords = polyline.decode(a.summary_polyline) as [number, number][]
               if (coords.length < 2) return null
               return <Polyline key={a.id} positions={coords}
-                pathOptions={{ color: '#FC4C02', weight: 1.5, opacity: 0.3 }} />
+                pathOptions={{ color: '#054BFF', weight: 1.5, opacity: 0.3 }} />
             })}
           </MapContainer>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px 16px', background: '#111', borderTop: '1px solid #1a1a2a' }}>
