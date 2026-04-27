@@ -6,6 +6,7 @@ import "../src/mocks/MockUSDC.sol";
 import "../src/NazarRegistry.sol";
 import "../src/NazarOracle.sol";
 import "../src/NazarYield.sol";
+import "../src/mocks/MockMorpho.sol";
 import "../src/NazarTreasury.sol";
 import "../src/NazarChallenge.sol";
 
@@ -46,8 +47,8 @@ contract DeployBaseSepolia is Script {
         NazarOracle oracle = new NazarOracle(deployer, deployer);
         console2.log("NazarOracle:    ", address(oracle));
 
-        NazarYield yieldVault = new NazarYield(deployer, address(usdc));
-        console2.log("NazarYield:     ", address(yieldVault));
+        MockMorpho yieldVault = new MockMorpho(deployer, address(usdc));
+        console2.log("MockMorpho:     ", address(yieldVault));
 
         NazarTreasury treasury = new NazarTreasury(deployer, address(usdc));
         console2.log("NazarTreasury:  ", address(treasury));
