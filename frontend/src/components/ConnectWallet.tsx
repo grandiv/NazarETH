@@ -46,7 +46,8 @@ export default function ConnectWallet() {
       onClick={() => {
         const baseAcc = connectors.find(c => c.name === 'Base Account')
         const inj = connectors.find(c => c.id === 'injected')
-        connect({ connector: inj || baseAcc || connectors[0] })
+        const hasProvider = !!(window as any).ethereum
+        connect({ connector: hasProvider ? (inj || baseAcc) : (baseAcc || inj) })
       }}
       style={{
         background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
