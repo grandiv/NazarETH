@@ -6,21 +6,21 @@ import { ADDRESSES, NazarChallengeAbi, MockUSDAbi, parseUSDC, ACTIVITY_TYPES } f
 
 interface Props { onNavigate: (p: Page) => void }
 
-const ACTIVITY_OPTIONS = [
-  { value: 'running' as const, icon: '🏃', label: 'Running' },
-  { value: 'cycling' as const, icon: '🚴', label: 'Cycling' },
-  { value: 'swimming' as const, icon: '🏊', label: 'Swimming' },
+const PRESETS = [
+  { label: 'Quick 3K', km: '3', mins: '5', stake: '5', icon: '🏃' },
+  { label: '5K Run', km: '5', mins: '5', stake: '10', icon: '🏅' },
+  { label: '10K Challenge', km: '10', mins: '10', stake: '20', icon: '🏆' },
 ]
 
 export default function NewChallengePage({ onNavigate }: Props) {
   const { address, isConnected } = useAccount()
   const [step, setStep] = useState<'approve' | 'create'>('approve')
 
-  const [activityType, setActivityType] = useState<keyof typeof ACTIVITY_TYPES>('running')
-  const [targetValue, setTargetValue] = useState('10000')
-  const [durationMins, setDurationMins] = useState('3')
+  const [targetKm, setTargetKm] = useState('5')
+  const [durationMins, setDurationMins] = useState('5')
   const [stakeAmount, setStakeAmount] = useState('10')
 
+  const targetMeters = BigInt(Math.round(Number(targetKm) * 1000))
   const stakeRaw = parseUSDC(stakeAmount || '0')
   const deadline = BigInt(Math.floor(Date.now() / 1000) + Number(durationMins) * 60)
 
@@ -67,7 +67,7 @@ export default function NewChallengePage({ onNavigate }: Props) {
         }}>🏆</div>
         <h2 className="section-title" style={{ marginBottom: 8 }}>Challenge Created!</h2>
         <p style={{ color: 'var(--text2)', marginBottom: 24, lineHeight: 1.6 }}>
-          Your challenge is live. Deposit your USDC to activate it.
+          Now deposit your USDC to activate it.
         </p>
         <button className="btn-primary" onClick={() => onNavigate('active')}>
           Go to My Challenge →
@@ -79,92 +79,62 @@ export default function NewChallengePage({ onNavigate }: Props) {
   return (
     <div style={{ maxWidth: 540 }} className="animate-in">
       <h1 className="section-title" style={{ marginBottom: 6 }}>New Challenge</h1>
-      <p style={{ color: 'var(--muted)', marginBottom: 24, lineHeight: 1.6 }}>
-        Define your fitness commitment and stake USDC. Hit your goal to earn it back.
+      <p style={{ color: 'var(--muted)', marginBottom: 20, lineHeight: 1.6 }}>
+        Stake USDC on a running goal. Hit it to earn back — miss it and lose the unearned portion.
       </p>
 
       <div className="card">
         <div className="form-group">
-          <label className="form-label">Activity Type</label>
+          <label className="form-label">Quick Presets</label>
           <div style={{ display: 'flex', gap: 8 }}>
-            {ACTIVITY_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setActivityType(opt.value)}
-                style={{
-                  flex: 1,
-                  padding: '12px 8px',
-                  borderRadius: 10,
-                  border: activityType === opt.value ? '2px solid var(--strava)' : '1px solid var(--border)',
-                  background: activityType === opt.value ? 'rgba(252,76,2,0.08)' : 'var(--bg)',
-                  color: activityType === opt.value ? 'var(--accent2)' : 'var(--muted)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  transition: 'all .15s ease',
-                  textAlign: 'center',
-                }}
-              >
-                <div style={{ fontSize: 22, marginBottom: 4 }}>{opt.icon}</div>
-                {opt.label}
-              </button>
-            ))}
+            {PRESETS.map(p => {
+              const active = targetKm === p.km && durationMins === p.mins && stakeAmount === p.stake
+              return (
+                <button key={p.label} onClick={() => { setTargetKm(p.km); setDurationMins(p.mins); setStakeAmount(p.stake) }}
+                  style={{
+                    flex: 1, padding: '10px 8px', borderRadius: 10, textAlign: 'center',
+                    border: active ? '2px solid var(--strava)' : '1px solid var(--border)',
+                    background: active ? 'rgba(252,76,2,0.08)' : 'var(--bg)',
+                    color: active ? 'var(--accent2)' : 'var(--muted)',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  <div style={{ fontSize: 20, marginBottom: 2 }}>{p.icon}</div>
+                  {p.label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">Target Distance (metres)</label>
-          <input
-            type="number"
-            value={targetValue}
-            onChange={e => setTargetValue(e.target.value)}
-          />
-          <span className="form-hint">
-            E.g. 10000 = 10 km total for the challenge period.
-          </span>
+          <label className="form-label">Target Distance (km)</label>
+          <input type="number" min="0.5" step="0.5" value={targetKm}
+            onChange={e => setTargetKm(e.target.value)} />
+          <span className="form-hint">{Number(targetKm).toLocaleString()} km total during the challenge period.</span>
         </div>
 
         <div className="form-group">
           <label className="form-label">Duration (minutes)</label>
-          <input
-            type="number"
-            min="3"
-            value={durationMins}
-            onChange={e => setDurationMins(e.target.value)}
-          />
-          <span className="form-hint">
-            Minimum 3 min. After deadline, 2 min grace period before finalizing.
-          </span>
+          <input type="number" min="3" value={durationMins}
+            onChange={e => setDurationMins(e.target.value)} />
+          <span className="form-hint">Min 3 min for demo. After deadline, 2 min grace before finalizing.</span>
         </div>
 
         <div className="form-group">
           <label className="form-label">Stake Amount (USDC)</label>
-          <input
-            type="number"
-            min="1"
-            step="1"
-            value={stakeAmount}
-            onChange={e => setStakeAmount(e.target.value)}
-          />
-          <span className="form-hint">
-            Minimum 1 USDC. Unearned portion is lost if you miss the goal.
-          </span>
+          <input type="number" min="1" step="1" value={stakeAmount}
+            onChange={e => setStakeAmount(e.target.value)} />
+          <span className="form-hint">Min 1 USDC. Unearned portion is slashed if you miss the goal.</span>
         </div>
 
         <hr className="divider" />
 
         <div style={{
-          background: 'var(--surface2)',
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 18,
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 10,
+          background: 'var(--surface2)', borderRadius: 12, padding: 16, marginBottom: 18,
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
         }}>
           <div>
-            <div className="stat-label">You'll stake</div>
+            <div className="stat-label">You stake</div>
             <div style={{ fontWeight: 700, color: 'var(--accent2)' }}>{stakeAmount} USDC</div>
           </div>
           <div>
@@ -173,11 +143,11 @@ export default function NewChallengePage({ onNavigate }: Props) {
           </div>
           <div>
             <div className="stat-label">Target</div>
-            <div style={{ fontWeight: 700 }}>{Number(targetValue).toLocaleString()} m</div>
+            <div style={{ fontWeight: 700 }}>{Number(targetKm).toLocaleString()} km</div>
           </div>
           <div>
-            <div className="stat-label">Activity</div>
-            <div style={{ fontWeight: 700 }}>{ACTIVITY_OPTIONS.find(o => o.value === activityType)?.label}</div>
+            <div className="stat-label">Per milestone</div>
+            <div style={{ fontWeight: 700 }}>{(Number(stakeAmount) / 10).toFixed(1)} USDC (10%)</div>
           </div>
         </div>
 
@@ -188,40 +158,30 @@ export default function NewChallengePage({ onNavigate }: Props) {
         )}
 
         {needsApproval && step === 'approve' && (
-          <button
-            className="btn-primary"
-            style={{ width: '100%', padding: 13 }}
-            disabled={approving}
+          <button className="btn-primary" style={{ width: '100%', padding: 13 }} disabled={approving}
             onClick={() => approve({
-              address: ADDRESSES.MockUSDC,
-              abi: MockUSDAbi,
+              address: ADDRESSES.MockUSDC, abi: MockUSDAbi,
               functionName: 'approve',
               args: [ADDRESSES.NazarChallenge, stakeRaw * 10n],
               chainId: baseSepolia.id,
-            })}
-          >
-            {approving ? 'Confirm approval in wallet...' : `1. Approve ${stakeAmount} USDC`}
+            })}>
+            {approving ? 'Confirm in wallet...' : `1. Approve ${stakeAmount} USDC`}
           </button>
         )}
 
         {(!needsApproval || step === 'create') && (
-          <button
-            className="btn-success"
-            style={{ width: '100%', padding: 13 }}
-            disabled={creating}
+          <button className="btn-success" style={{ width: '100%', padding: 13 }} disabled={creating}
             onClick={() => create({
-              address: ADDRESSES.NazarChallenge,
-              abi: NazarChallengeAbi,
+              address: ADDRESSES.NazarChallenge, abi: NazarChallengeAbi,
               functionName: 'createChallenge',
               args: [
-                ACTIVITY_TYPES[activityType] as `0x${string}`,
-                BigInt(targetValue),
+                ACTIVITY_TYPES.running as `0x${string}`,
+                targetMeters,
                 deadline,
                 stakeRaw,
               ],
               chainId: baseSepolia.id,
-            })}
-          >
+            })}>
             {creating ? 'Confirm in wallet...' : '2. Create Challenge'}
           </button>
         )}

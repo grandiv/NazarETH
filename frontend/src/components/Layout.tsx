@@ -19,10 +19,9 @@ const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: 'register', label: 'Register', icon: '👤' },
   { id: 'new-challenge', label: 'New Challenge', icon: '🎯' },
   { id: 'active', label: 'My Challenge', icon: '⚡' },
-  { id: 'simulate', label: 'Simulate Run', icon: '🗺️' },
-  { id: 'history', label: 'History', icon: '📜' },
+  { id: 'simulate', label: 'Simulate Run', icon: '🏃' },
   { id: 'territory', label: 'Territory', icon: '🗺️' },
-  { id: 'oracle', label: 'Oracle', icon: '🔮' },
+  { id: 'history', label: 'History', icon: '📜' },
 ]
 
 interface Props {
