@@ -230,7 +230,7 @@ func (s *Store) GetOrCreateChallengeStart(challengeID, userID int64, contractAdd
 	var startTime int64
 	err := s.db.QueryRow("SELECT start_time FROM challenge_sync_state WHERE challenge_id = ? AND contract_address = ?", challengeID, contractAddress).Scan(&startTime)
 	if err == sql.ErrNoRows {
-		startTime = time.Now().Unix()
+		startTime = time.Now().Unix() - 7200
 		_, err = s.db.Exec("INSERT INTO challenge_sync_state (challenge_id, contract_address, user_id, start_time) VALUES (?, ?, ?, ?)",
 			challengeID, contractAddress, userID, startTime)
 		if err != nil {

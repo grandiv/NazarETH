@@ -279,7 +279,6 @@ func (p *StravaProvider) UploadGpxRun(ctx context.Context, userID int64, name st
 
 	totalDist := 0.0
 	speed := 2.78
-	startTime := time.Now().Add(-time.Duration(int(len(points)*30)) * time.Minute)
 	trackpoints := make([]gpxTrackpoint, len(points))
 	elapsed := 0.0
 
@@ -289,12 +288,21 @@ func (p *StravaProvider) UploadGpxRun(ctx context.Context, userID int64, name st
 			totalDist += d
 			elapsed += d / speed
 		}
-		t := startTime.Add(time.Duration(elapsed) * time.Second)
 		trackpoints[i] = gpxTrackpoint{
-			Lat:  pt[0],
-			Lon:  pt[1],
-			Time: t.UTC().Format("2006-01-02T15:04:05Z"),
+			Lat: pt[0],
+			Lon: pt[1],
 		}
+	}
+
+	startTime := time.Now().Add(-time.Duration(elapsed) * time.Second)
+	for i := range trackpoints {
+		var ptElapsed float64
+		if i > 0 {
+			d := haversineFloat(points[i-1][0], points[i-1][1], points[i][0], points[i][1])
+			ptElapsed += d / speed
+		}
+		t := startTime.Add(time.Duration(ptElapsed) * time.Second)
+		trackpoints[i].Time = t.UTC().Format("2006-01-02T15:04:05Z")
 	}
 
 	gpx := gpxFile{
