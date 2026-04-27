@@ -13,6 +13,7 @@ services:
       STRAVA_CLIENT_ID: "${STRAVA_CLIENT_ID}"
       STRAVA_CLIENT_SECRET: "${STRAVA_CLIENT_SECRET}"
       STRAVA_REDIRECT_URI: "https://nazareth.izcy.tech/auth/strava/callback"
+      FRONTEND_URL: "https://nazareth.izcy.tech"
       BACKEND_SIGNER_PRIVATE_KEY: "${BACKEND_SIGNER_PRIVATE_KEY}"
       BACKEND_SIGNER_ADDRESS: "${BACKEND_SIGNER_ADDRESS}"
       BASE_SEPOLIA_RPC_URL: "${BASE_SEPOLIA_RPC_URL}"

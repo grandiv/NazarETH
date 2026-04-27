@@ -43,7 +43,7 @@ func main() {
 		log.Println("WARNING: oracle not configured (no BACKEND_SIGNER_PRIVATE_KEY)")
 	}
 
-	handler := api.New(s, stravaProv, hevyProv, oracleClient, cfg.JWTSecret, cfg.StravaRedirectURI, "http://localhost:5173", cfg.ChallengeAddress)
+	handler := api.New(s, stravaProv, hevyProv, oracleClient, cfg.JWTSecret, cfg.StravaRedirectURI, cfg.FrontendURL, cfg.ChallengeAddress)
 
 	mux := http.NewServeMux()
 

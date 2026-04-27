@@ -11,6 +11,7 @@ type Config struct {
 	StravaClientID      string
 	StravaClientSecret  string
 	StravaRedirectURI   string
+	FrontendURL         string
 	HevyAPIKey          string
 	SignerPrivateKey    string
 	SignerAddress       string
@@ -31,6 +32,7 @@ func Load() *Config {
 		StravaClientID:     getEnv("STRAVA_CLIENT_ID", ""),
 		StravaClientSecret: getEnv("STRAVA_CLIENT_SECRET", ""),
 		StravaRedirectURI:  getEnv("STRAVA_REDIRECT_URI", "http://localhost:8080/auth/strava/callback"),
+		FrontendURL:        getEnv("FRONTEND_URL", "http://localhost:5173"),
 		HevyAPIKey:         getEnv("HEVY_API_KEY", ""),
 		SignerPrivateKey:   getEnv("BACKEND_SIGNER_PRIVATE_KEY", ""),
 		SignerAddress:      getEnv("BACKEND_SIGNER_ADDRESS", ""),
