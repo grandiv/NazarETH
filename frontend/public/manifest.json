@@ -1,0 +1,18 @@
+{
+  "name": "NazarETH",
+  "short_name": "NazarETH",
+  "description": "Decentralized fitness commitment challenges. Stake USDC, hit your Strava goals, earn it back.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d12",
+  "theme_color": "#FC4C02",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo_nazareth.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
