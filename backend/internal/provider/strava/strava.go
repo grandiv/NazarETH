@@ -107,8 +107,9 @@ func (p *StravaProvider) getAccessToken(userID int64) (string, error) {
 }
 
 type activitySummary struct {
-	Distance float64 `json:"distance"`
-	Type     string  `json:"type"`
+	Distance        float64 `json:"distance"`
+	Type            string  `json:"type"`
+	MapSummaryPolyline string `json:"map_summary_polyline"`
 }
 
 func (p *StravaProvider) FetchProgress(ctx context.Context, goalType string, startTime, endTime int64) (uint64, error) {
@@ -179,6 +180,75 @@ func (p *StravaProvider) GetAuthURL(redirectURI, state string) string {
 
 func ParseDistanceToKm(meters uint64) string {
 	return strconv.FormatFloat(float64(meters)/1000.0, 'f', 2, 64)
+}
+
+type ActivityWithRoute struct {
+	ID             int64   `json:"id"`
+	Name           string  `json:"name"`
+	Distance       float64 `json:"distance"`
+	Type           string  `json:"type"`
+	StartDate      string  `json:"start_date"`
+	SummaryPolyline string `json:"summary_polyline"`
+}
+
+func (p *StravaProvider) FetchActivities(ctx context.Context, userID int64, after, before int64) ([]ActivityWithRoute, error) {
+	token, err := p.getAccessToken(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var all []ActivityWithRoute
+	page := 1
+
+	for {
+		u := fmt.Sprintf("https://www.strava.com/api/v3/athlete/activities?before=%d&after=%d&page=%d&per_page=100",
+			before, after, page)
+		req, _ := http.NewRequestWithContext(ctx, "GET", u, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("strava activities: %w", err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			return nil, fmt.Errorf("strava activities error (%d): %s", resp.StatusCode, body)
+		}
+
+		var raw []struct {
+			ID        int64   `json:"id"`
+			Name      string  `json:"name"`
+			Distance  float64 `json:"distance"`
+			Type      string  `json:"type"`
+			StartDate string  `json:"start_date"`
+			Map       struct {
+				SummaryPolyline string `json:"summary_polyline"`
+			} `json:"map"`
+		}
+		if err := json.Unmarshal(body, &raw); err != nil {
+			return nil, fmt.Errorf("strava activities parse: %w", err)
+		}
+		if len(raw) == 0 {
+			break
+		}
+		for _, a := range raw {
+			if a.Map.SummaryPolyline != "" {
+				all = append(all, ActivityWithRoute{
+					ID:              a.ID,
+					Name:            a.Name,
+					Distance:        a.Distance,
+					Type:            a.Type,
+					StartDate:       a.StartDate,
+					SummaryPolyline: a.Map.SummaryPolyline,
+				})
+			}
+		}
+		if len(raw) < 100 {
+			break
+		}
+		page++
+	}
+	return all, nil
 }
 
 type gpxTrackpoint struct {

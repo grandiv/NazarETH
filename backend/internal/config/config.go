@@ -35,12 +35,12 @@ func Load() *Config {
 		SignerPrivateKey:   getEnv("BACKEND_SIGNER_PRIVATE_KEY", ""),
 		SignerAddress:      getEnv("BACKEND_SIGNER_ADDRESS", ""),
 		RPCURL:             getEnv("BASE_SEPOLIA_RPC_URL", "https://sepolia.base.org"),
-		OracleAddress:      getEnv("NAZAR_ORACLE_ADDRESS", "0x30D282C7bd12467714Bb922C62f712bC4FC0002f"),
-		RegistryAddress:    getEnv("NAZAR_REGISTRY_ADDRESS", "0x811a837bdaa8D27967Db87af87C54291B33B6bae"),
-		ChallengeAddress:   getEnv("NAZAR_CHALLENGE_ADDRESS", "0x0c1D52dAe67E3136729Ccb26a4ba64648f5eCFda"),
-		MockUSDCAddress:    getEnv("NAZAR_MOCKUSDC_ADDRESS", "0x6118c512a606d55d2b466727e8f26E60233860dd"),
-		TreasuryAddress:    getEnv("NAZAR_TREASURY_ADDRESS", "0x1CFA02Ab6649a679435cB9C1CafbEA6CE0F92e66"),
-		YieldAddress:       getEnv("NAZAR_YIELD_ADDRESS", "0x7b5d6f5ff516F1d7d6EF0E9DD9cfBA79A5e8f12d"),
+		OracleAddress:      getEnv("NAZAR_ORACLE_ADDRESS", "0xb7592f34b512092857A785329E1a3aEeBC728ca8"),
+		RegistryAddress:    getEnv("NAZAR_REGISTRY_ADDRESS", "0xe5F730645870d573A9a9B9a0133d6cE7aA8bD089"),
+		ChallengeAddress:   getEnv("NAZAR_CHALLENGE_ADDRESS", "0xbF4551c7D4Ec55ecb893c93846dEF76bA6ab655E"),
+		MockUSDCAddress:    getEnv("NAZAR_MOCKUSDC_ADDRESS", "0x088B58BCdD68E3411f36170A105658bd1014c6a6"),
+		TreasuryAddress:    getEnv("NAZAR_TREASURY_ADDRESS", "0x884609eeBfb89f3Edb8CB06b751aAEdE48618eE3"),
+		YieldAddress:       getEnv("NAZAR_YIELD_ADDRESS", "0x0F69f8e2dAb38714b6e52E8BA0d922D084512886"),
 	}
 }
 

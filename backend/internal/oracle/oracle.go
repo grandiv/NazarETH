@@ -188,9 +188,7 @@ func (o *OracleClient) parseOracleABI() (*abi.ABI, error) {
 }
 
 func (o *OracleClient) GetChallengeTarget(ctx context.Context, challengeID uint64) (uint64, error) {
-	challengeABIJSON := `[{"inputs":[{"name":"","type":"uint256"}],"name":"getChallenge","outputs":[{"name":"challenger","type":"address"},{"name":"activityType","type":"bytes32"},{"name":"targetValue","type":"uint256"},{"name":"deadline","type":"uint256"},{"name":"stakeAmount","type":"uint256"},{"name":"status","type":"uint8"},{"name":"withdrawnBps","type":"uint256"}],"stateMutability":"view","type":"function"}]`
-
-	parsed, err := abi.JSON(strings.NewReader(challengeABIJSON))
+	parsed, err := abi.JSON(strings.NewReader(`[{"inputs":[{"name":"","type":"uint256"}],"name":"getChallenge","outputs":[{"name":"challenger","type":"address"},{"name":"activityType","type":"bytes32"},{"name":"targetValue","type":"uint256"},{"name":"deadline","type":"uint256"},{"name":"stakeAmount","type":"uint256"},{"name":"status","type":"uint8"},{"name":"withdrawnBps","type":"uint256"}],"stateMutability":"view","type":"function"}]`))
 	if err != nil {
 		return 0, fmt.Errorf("parse challenge abi: %w", err)
 	}
@@ -208,17 +206,33 @@ func (o *OracleClient) GetChallengeTarget(ctx context.Context, challengeID uint6
 		return 0, fmt.Errorf("call getChallenge: %w", err)
 	}
 
-	out, err := parsed.Methods["getChallenge"].Outputs.Unpack(result)
-	if err != nil {
-		return 0, fmt.Errorf("unpack: %w", err)
-	}
-	if len(out) < 3 {
-		return 0, fmt.Errorf("unexpected getChallenge output length: %d", len(out))
+	if len(result) < 3*32 {
+		return 0, fmt.Errorf("getChallenge returned %d bytes, need at least 96", len(result))
 	}
 
-	targetValue, ok := out[2].(*big.Int)
-	if !ok {
-		return 0, fmt.Errorf("targetValue is not *big.Int")
-	}
+	targetValue := new(big.Int).SetBytes(result[2*32 : 3*32])
 	return targetValue.Uint64(), nil
+}
+
+func (o *OracleClient) GetChallengeDeadline(ctx context.Context, challengeID uint64) (uint64, error) {
+	parsed, err := abi.JSON(strings.NewReader(`[{"inputs":[{"name":"","type":"uint256"}],"name":"getChallenge","outputs":[{"name":"challenger","type":"address"},{"name":"activityType","type":"bytes32"},{"name":"targetValue","type":"uint256"},{"name":"deadline","type":"uint256"},{"name":"stakeAmount","type":"uint256"},{"name":"status","type":"uint8"},{"name":"withdrawnBps","type":"uint256"}],"stateMutability":"view","type":"function"}]`))
+	if err != nil {
+		return 0, fmt.Errorf("parse abi: %w", err)
+	}
+	calldata, err := parsed.Pack("getChallenge", new(big.Int).SetUint64(challengeID))
+	if err != nil {
+		return 0, fmt.Errorf("pack: %w", err)
+	}
+	result, err := o.client.CallContract(ctx, ethereum.CallMsg{
+		To:   &o.challengeAddr,
+		Data: calldata,
+	}, nil)
+	if err != nil {
+		return 0, fmt.Errorf("call: %w", err)
+	}
+	if len(result) < 4*32 {
+		return 0, fmt.Errorf("short response: %d bytes", len(result))
+	}
+	deadline := new(big.Int).SetBytes(result[3*32 : 4*32])
+	return deadline.Uint64(), nil
 }

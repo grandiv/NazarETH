@@ -93,7 +93,11 @@ export default function ActiveChallengePage() {
   const status = Number(challenge.status)
   const stakeAmount = challenge.stakeAmount as bigint
   const withdrawnBps = challenge.withdrawnBps as bigint
+  const targetValue = challenge.targetValue as bigint
   const progressBps = (progressBpsRaw ?? 0n) as bigint
+  const achievedDistance = targetValue * progressBps / 10000n
+  const targetKm = (Number(targetValue) / 1000).toFixed(1)
+  const achievedKm = (Number(achievedDistance) / 1000).toFixed(2)
   const milestones = Number(withdrawnBps) / 1000
   const deadline = challenge.deadline as bigint
   const isActive = status === 2
@@ -168,7 +172,11 @@ export default function ActiveChallengePage() {
           </span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 14, marginBottom: 18 }}>
+          <div>
+            <div className="stat-label">Distance</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--success)' }}>{achievedKm} / {targetKm} km</div>
+          </div>
           <div>
             <div className="stat-label">Staked</div>
             <div style={{ fontWeight: 700, fontSize: 16 }}>{formatUSDC(stakeAmount)} USDC</div>

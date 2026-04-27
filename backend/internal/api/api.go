@@ -542,7 +542,33 @@ func (a *API) HandleChallengeSync(w http.ResponseWriter, r *http.Request) {
 
 	_ = token
 
-	actualDistance, err := a.strava.FetchProgressForUser(r.Context(), user.ID, "distance", 0, time.Now().Unix())
+	deadline, err := a.oracle.GetChallengeDeadline(r.Context(), challengeID)
+	if err != nil {
+		writeError(w, 500, "failed to read challenge deadline: "+err.Error())
+		return
+	}
+
+	if uint64(time.Now().Unix()) > deadline+120 {
+		txHash, err := a.oracle.FinalizeProgress(r.Context(), walletAddr, challengeID)
+		if err != nil {
+			writeError(w, 500, "auto-finalize error: "+err.Error())
+			return
+		}
+		writeJSON(w, 200, map[string]interface{}{
+			"auto_finalized": true,
+			"tx_hash":        txHash.Hex(),
+			"message":        "deadline passed — challenge finalized automatically",
+		})
+		return
+	}
+
+	challengeStart, err := a.store.GetOrCreateChallengeStart(int64(challengeID), user.ID)
+	if err != nil {
+		writeError(w, 500, "db error: "+err.Error())
+		return
+	}
+
+	actualDistance, err := a.strava.FetchProgressForUser(r.Context(), user.ID, "distance", challengeStart, time.Now().Unix())
 	if err != nil {
 		writeError(w, 500, "strava fetch error: "+err.Error())
 		return
@@ -579,6 +605,36 @@ func (a *API) HandleChallengeSync(w http.ResponseWriter, r *http.Request) {
 func generateNonce() string {
 	n, _ := rand.Int(rand.Reader, big.NewInt(1e18))
 	return fmt.Sprintf("%d", n)
+}
+
+func (a *API) HandleStravaActivities(w http.ResponseWriter, r *http.Request) {
+	wallet := auth.GetWalletFromContext(r.Context())
+	user, err := a.store.GetUserByWallet(wallet)
+	if err != nil {
+		writeError(w, 404, "user not found")
+		return
+	}
+
+	afterStr := r.URL.Query().Get("after")
+	beforeStr := r.URL.Query().Get("before")
+	after := int64(0)
+	before := time.Now().Unix()
+	if afterStr != "" {
+		after, _ = strconv.ParseInt(afterStr, 10, 64)
+	}
+	if beforeStr != "" {
+		before, _ = strconv.ParseInt(beforeStr, 10, 64)
+	}
+
+	activities, err := a.strava.FetchActivities(r.Context(), user.ID, after, before)
+	if err != nil {
+		writeError(w, 500, "strava fetch error: "+err.Error())
+		return
+	}
+	if activities == nil {
+		activities = []strava.ActivityWithRoute{}
+	}
+	writeJSON(w, 200, activities)
 }
 
 func (a *API) HandleStravaUploadRun(w http.ResponseWriter, r *http.Request) {

@@ -256,11 +256,13 @@ contract NazarChallenge is AccessControl, Pausable, ReentrancyGuard {
     function finalize(uint256 challengeId) external whenNotPaused nonReentrant {
         Challenge storage c = _getChallenge(challengeId);
         if (c.status != ChallengeStatus.Active) revert WrongStatus(c.status, ChallengeStatus.Active);
-        if (block.timestamp < c.deadline) revert DeadlineNotPassed(c.deadline, block.timestamp);
+
+        bool goalCompleted = (c.withdrawnBps >= BPS_DENOMINATOR);
+        if (!goalCompleted && block.timestamp < c.deadline) revert DeadlineNotPassed(c.deadline, block.timestamp);
 
         bool oracleFinalized = oracle.isFinalized(c.challenger, challengeId);
         bool gracePassed = block.timestamp >= c.deadline + GRACE_PERIOD;
-        if (!oracleFinalized && !gracePassed) revert OracleNotFinalized();
+        if (!goalCompleted && !oracleFinalized && !gracePassed) revert OracleNotFinalized();
 
         c.status = ChallengeStatus.Finalized;
         delete _activeChallenge[c.challenger];

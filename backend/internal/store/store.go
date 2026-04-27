@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 
@@ -64,6 +65,12 @@ func (s *Store) migrate() error {
 	);
 	CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
 	CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);
+	CREATE TABLE IF NOT EXISTS challenge_sync_state (
+		challenge_id INTEGER PRIMARY KEY,
+		user_id INTEGER NOT NULL REFERENCES users(id),
+		start_time INTEGER NOT NULL,
+		last_sync INTEGER NOT NULL DEFAULT 0
+	);
 	`)
 	return err
 }
@@ -217,27 +224,16 @@ func (s *Store) ListGoalsByUser(userID int64) ([]*goal.Goal, error) {
 	return goals, nil
 }
 
-func (s *Store) ListActiveGoalsByUser(userID int64) ([]*goal.Goal, error) {
-	rows, err := s.db.Query(`
-		SELECT id, user_id, provider, goal_type, target_value, deadline, stake_amount,
-			   actual_value, deposited_at, status, contract_id, settled, created_at
-		FROM goals WHERE user_id = ? AND status = 'active' AND settled = 0 ORDER BY deadline ASC`, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var goals []*goal.Goal
-	for rows.Next() {
-		g := &goal.Goal{}
-		var contractID sql.NullInt64
-		if err := rows.Scan(&g.ID, &g.UserID, &g.Provider, &g.GoalType, &g.TargetValue, &g.Deadline,
-			&g.StakeAmount, &g.ActualValue, &g.DepositedAt, &g.Status, &contractID, &g.Settled, &g.CreatedAt); err != nil {
-			return nil, err
+func (s *Store) GetOrCreateChallengeStart(challengeID, userID int64) (int64, error) {
+	var startTime int64
+	err := s.db.QueryRow("SELECT start_time FROM challenge_sync_state WHERE challenge_id = ?", challengeID).Scan(&startTime)
+	if err == sql.ErrNoRows {
+		startTime = time.Now().Unix()
+		_, err = s.db.Exec("INSERT INTO challenge_sync_state (challenge_id, user_id, start_time) VALUES (?, ?, ?)",
+			challengeID, userID, startTime)
+		if err != nil {
+			return 0, err
 		}
-		if contractID.Valid {
-			g.ContractID = &contractID.Int64
-		}
-		goals = append(goals, g)
 	}
-	return goals, nil
+	return startTime, nil
 }
