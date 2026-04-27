@@ -101,7 +101,7 @@ export default function Layout({ currentPage, onNavigate, children, banner }: Pr
           </button>
           <button
             onClick={addBaseSepoliaToMetaMask}
-            className="btn-chain"
+            className="btn-chain desktop-only"
             title="Add Base Sepolia to MetaMask"
           >
             + Base
@@ -156,13 +156,20 @@ export default function Layout({ currentPage, onNavigate, children, banner }: Pr
                 </button>
               )
             })}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-              <button onClick={() => { setGuideOpen(true); setMenuOpen(false) }} className="btn-chain" style={{ flex: 1, padding: '10px 14px' }}>
-                ? Guide
-              </button>
-              <button onClick={addBaseSepoliaToMetaMask} className="btn-chain" style={{ flex: 1, padding: '10px 14px' }}>
-                + Add Base Sepolia
-              </button>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)' }}>
+              <div style={{ marginBottom: 12 }}>
+                <ConnectWallet />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => { setGuideOpen(true); setMenuOpen(false) }} className="btn-chain" style={{ flex: 1, padding: '10px 14px' }}>
+                  ? Guide
+                </button>
+                {typeof (window as any).ethereum !== 'undefined' && (
+                  <button onClick={addBaseSepoliaToMetaMask} className="btn-chain" style={{ flex: 1, padding: '10px 14px' }}>
+                    + Base Sepolia
+                  </button>
+                )}
+              </div>
             </div>
           </nav>
         </div>

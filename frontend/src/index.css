@@ -279,7 +279,8 @@ input:focus, select:focus {
 
 @media (max-width: 768px) {
   .desktop-nav { display: none; }
-  .header-actions { display: none; }
+  .desktop-only { display: none !important; }
+  .header-actions { display: flex; gap: 8px; flex-shrink: 0; margin-left: auto; }
   .hamburger { display: flex; }
   .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .stat-value { font-size: 18px; }
