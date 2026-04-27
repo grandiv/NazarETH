@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      DATABASE_PATH: "/data/nazareth.db"
+      JWT_SECRET: "${JWT_SECRET}"
+      STRAVA_CLIENT_ID: "${STRAVA_CLIENT_ID}"
+      STRAVA_CLIENT_SECRET: "${STRAVA_CLIENT_SECRET}"
+      STRAVA_REDIRECT_URI: "https://nazareth.izcy.tech/auth/strava/callback"
+      BACKEND_SIGNER_PRIVATE_KEY: "${BACKEND_SIGNER_PRIVATE_KEY}"
+      BACKEND_SIGNER_ADDRESS: "${BACKEND_SIGNER_ADDRESS}"
+      BASE_SEPOLIA_RPC_URL: "${BASE_SEPOLIA_RPC_URL}"
+      NAZAR_MOCKUSDC_ADDRESS: "${NAZAR_MOCKUSDC_ADDRESS}"
+      NAZAR_REGISTRY_ADDRESS: "${NAZAR_REGISTRY_ADDRESS}"
+      NAZAR_ORACLE_ADDRESS: "${NAZAR_ORACLE_ADDRESS}"
+      NAZAR_YIELD_ADDRESS: "${NAZAR_YIELD_ADDRESS}"
+      NAZAR_TREASURY_ADDRESS: "${NAZAR_TREASURY_ADDRESS}"
+      NAZAR_CHALLENGE_ADDRESS: "${NAZAR_CHALLENGE_ADDRESS}"
+    volumes:
+      - backend-data:/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3020:80"
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:
