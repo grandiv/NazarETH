@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@base-org/account": "^2.5.4",
     "@mapbox/polyline": "^1.2.1",
     "@tanstack/react-query": "^5.56.2",
     "@types/leaflet": "^1.9.21",
