@@ -1,8 +1,6 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAccount } from 'wagmi'
-import { MapContainer, TileLayer, useMap, Polyline } from 'react-leaflet'
-import { useLeafletContext } from '@react-leaflet/core'
-import L from 'leaflet'
+import { MapContainer, TileLayer, useMap, Polygon, Polyline } from 'react-leaflet'
 import polyline from '@mapbox/polyline'
 import 'leaflet/dist/leaflet.css'
 import { BACKEND_URL } from '../lib/contracts'
@@ -20,19 +18,19 @@ const HEX_R = 0.00045
 const HEX_H = HEX_R * Math.sqrt(3)
 const HEX_W = HEX_R * 2
 
-function axialToLatCol(row: number, col: number): [number, number] {
+function axialCenter(row: number, col: number): [number, number] {
   return [row * HEX_H * 0.5, col * HEX_W * 0.75]
 }
 
-function latLngToAxial(lat: number, lng: number): [number, number] {
-  return [Math.round(lat / (HEX_H * 0.5)), Math.round(lng / (HEX_W * 0.75))]
+function toAxial(lat: number, lng: number): string {
+  return `${Math.round(lat / (HEX_H * 0.5))},${Math.round(lng / (HEX_W * 0.75))}`
 }
 
-function hexVertices(clat: number, clng: number): [number, number][] {
+function hexVerts(clat: number, clng: number): [number, number][] {
   const pts: [number, number][] = []
   for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 180) * (60 * i - 30)
-    pts.push([clat + HEX_R * Math.sin(angle), clng + HEX_R * Math.cos(angle)])
+    const a = (Math.PI / 180) * (60 * i - 30)
+    pts.push([clat + HEX_R * Math.sin(a), clng + HEX_R * Math.cos(a)])
   }
   return pts
 }
@@ -40,42 +38,6 @@ function hexVertices(clat: number, clng: number): [number, number][] {
 function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression | null }) {
   const map = useMap()
   useEffect(() => { if (bounds) map.fitBounds(bounds, { padding: [30, 30] }) }, [map, bounds])
-  return null
-}
-
-function HexLayer({ cells, maxCount }: { cells: Map<string, number>; maxCount: number }) {
-  const ctx = useLeafletContext()
-  const ref = useRef<L.LayerGroup | null>(null)
-
-  useEffect(() => {
-    const map = ctx.map
-    if (ref.current) map.removeLayer(ref.current)
-
-    const g = L.layerGroup()
-    ref.current = g
-
-    cells.forEach((count, key) => {
-      const [row, col] = key.split(',').map(Number)
-      const [clat, clng] = axialToLatCol(row, col)
-      const verts = hexVertices(clat, clng)
-
-      const idx = maxCount <= 1 ? 0 : Math.min(Math.floor((count / maxCount) * 6), 5)
-      const hue = 150 - idx * 8
-      const lit = 55 - idx * 4
-
-      L.polygon(verts as L.LatLngExpression[], {
-        color: `hsla(${hue}, 100%, ${lit + 20}%, 0.5)`,
-        weight: 1.2,
-        fillColor: `hsl(${hue}, 100%, ${lit}%)`,
-        fillOpacity: 0.7,
-        opacity: 0.6,
-      }).addTo(g)
-    })
-
-    g.addTo(map)
-    return () => { map.removeLayer(g) }
-  }, [ctx.map, cells, maxCount])
-
   return null
 }
 
@@ -94,37 +56,53 @@ export default function TerritoryPage() {
       .catch(() => {})
   }, [])
 
-  const { cells, maxCount, bounds } = useMemo(() => {
-    const c = new Map<string, number>()
+  const hexData = useMemo(() => {
+    const counts = new Map<string, number>()
     let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity
     const runs = activities.filter(a => a.summary_polyline && (a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim'))
 
     for (const act of runs) {
       const pts = polyline.decode(act.summary_polyline) as [number, number][]
-      for (let i = 0; i < pts.length; i++) {
-        const [row, col] = latLngToAxial(pts[i][0], pts[i][1])
-        const k = `${row},${col}`
-        c.set(k, (c.get(k) ?? 0) + 1)
-        if (i % 3 === 0) {
-          const [cl, cn] = axialToLatCol(row, col)
-          if (cl < minLat) minLat = cl
-          if (cl > maxLat) maxLat = cl
-          if (cn < minLng) minLng = cn
-          if (cn > maxLng) maxLng = cn
-        }
+      for (const [lat, lng] of pts) {
+        const k = toAxial(lat, lng)
+        counts.set(k, (counts.get(k) ?? 0) + 1)
+        const [r, c] = k.split(',').map(Number)
+        const [cl, cn] = axialCenter(r, c)
+        if (cl < minLat) minLat = cl
+        if (cl > maxLat) maxLat = cl
+        if (cn < minLng) minLng = cn
+        if (cn > maxLng) maxLng = cn
       }
     }
 
-    const m = Math.max(...Array.from(c.values()), 1)
-    const b = c.size > 0
+    const maxCount = Math.max(...Array.from(counts.values()), 1)
+    type HexInfo = { key: string; verts: [number, number][]; color: string; border: string }
+    const hexes: HexInfo[] = []
+
+    counts.forEach((count, key) => {
+      const [row, col] = key.split(',').map(Number)
+      const [clat, clng] = axialCenter(row, col)
+      const idx = maxCount <= 1 ? 0 : Math.min(Math.floor((count / maxCount) * 6), 5)
+      const hue = 150 - idx * 8
+      const lit = 55 - idx * 4
+      hexes.push({
+        key,
+        verts: hexVerts(clat, clng),
+        color: `hsl(${hue}, 100%, ${lit}%)`,
+        border: `hsla(${hue}, 100%, ${lit + 20}%, 0.5)`,
+      })
+    })
+
+    const bounds = hexes.length > 0
       ? [[minLat - 0.001, minLng - 0.002], [maxLat + 0.001, maxLng + 0.002]] as L.LatLngBoundsExpression
       : null
-    return { cells: c, maxCount: m, bounds: b }
+
+    return { hexes, bounds }
   }, [activities])
 
-  const totalCells = cells.size
+  const totalCells = hexData.hexes.length
   const hexAreaM2 = Math.sqrt(3) / 2 * (HEX_R / 0.000009) ** 2
-  const totalAreaKm2 = (totalCells * hexAreaM2) / 1_000_000
+  const totalAreaKm2 = (totalCells * hexAreaM2) / 1e6
   const runs = activities.filter(a => a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim')
 
   if (!isConnected) return <div className="card error-box">Connect your wallet to view territory.</div>
@@ -159,14 +137,17 @@ export default function TerritoryPage() {
         </div>
       </div>
 
-      {bounds ? (
+      {hexData.bounds && hexData.hexes.length > 0 ? (
         <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 12, border: '1px solid var(--border)' }}>
           <MapContainer center={[0, 0]} zoom={15}
             style={{ height: 520, width: '100%', background: '#080810' }}
-            attributionControl={false} zoomControl={true} preferCanvas={true}>
+            attributionControl={false} zoomControl={true}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-            <FitBounds bounds={bounds} />
-            <HexLayer cells={cells} maxCount={maxCount} />
+            <FitBounds bounds={hexData.bounds} />
+            {hexData.hexes.map(h => (
+              <Polygon key={h.key} positions={h.verts}
+                pathOptions={{ color: h.border, weight: 1.2, fillColor: h.color, fillOpacity: 0.7, opacity: 0.6 }} />
+            ))}
             {runs.filter(a => a.summary_polyline).slice(0, 15).map(a => {
               const coords = polyline.decode(a.summary_polyline) as [number, number][]
               if (coords.length < 2) return null
