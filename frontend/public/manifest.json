@@ -1,5 +1,4 @@
 {
-  "app_id": "69ef8c767bbc513a443f2715",
   "name": "NazarETH",
   "short_name": "NazarETH",
   "description": "Stake. Train. Compete. Earn. Decentralized fitness commitment challenges on Base.",
@@ -8,7 +7,6 @@
   "background_color": "#040B22",
   "theme_color": "#054BFF",
   "orientation": "portrait",
-  "platform_version": "1.0.0",
   "icons": [
     {
       "src": "/logo_nazareth.png",
@@ -16,14 +14,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "pages": {
-    "home": "/",
-    "register": "/register",
-    "new-challenge": "/new-challenge",
-    "active": "/active",
-    "simulate": "/simulate",
-    "territory": "/territory",
-    "history": "/history"
-  }
+  ]
 }

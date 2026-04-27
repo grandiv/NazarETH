@@ -21,3 +21,7 @@ backend/server.exe
 Thumbs.db
 *.swp
 *.swocontracts/broadcast/
+.agents/
+.claude/skills/
+skills/
+skills-lock.json
