@@ -28,9 +28,10 @@ type API struct {
 	jwtSecret         string
 	stravaRedirectURI string
 	frontendURL       string
+	challengeAddress  string
 }
 
-func New(s *store.Store, st *strava.StravaProvider, hv *hevy.HevyProvider, oc *oracle.OracleClient, jwtSecret, stravaRedirectURI, frontendURL string) *API {
+func New(s *store.Store, st *strava.StravaProvider, hv *hevy.HevyProvider, oc *oracle.OracleClient, jwtSecret, stravaRedirectURI, frontendURL, challengeAddress string) *API {
 	return &API{
 		store:             s,
 		strava:            st,
@@ -39,6 +40,7 @@ func New(s *store.Store, st *strava.StravaProvider, hv *hevy.HevyProvider, oc *o
 		jwtSecret:         jwtSecret,
 		stravaRedirectURI: stravaRedirectURI,
 		frontendURL:       frontendURL,
+		challengeAddress:  challengeAddress,
 	}
 }
 
@@ -562,7 +564,7 @@ func (a *API) HandleChallengeSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	challengeStart, err := a.store.GetOrCreateChallengeStart(int64(challengeID), user.ID)
+	challengeStart, err := a.store.GetOrCreateChallengeStart(int64(challengeID), user.ID, a.challengeAddress)
 	if err != nil {
 		writeError(w, 500, "db error: "+err.Error())
 		return
@@ -672,6 +674,27 @@ func (a *API) HandleStravaUploadRun(w http.ResponseWriter, r *http.Request) {
 		"pace":        pace,
 		"points":      len(req.Points),
 	})
+}
+
+func (a *API) HandleStravaStreams(w http.ResponseWriter, r *http.Request) {
+	wallet := auth.GetWalletFromContext(r.Context())
+	user, err := a.store.GetUserByWallet(wallet)
+	if err != nil {
+		writeError(w, 404, "user not found")
+		return
+	}
+	activityIDStr := r.PathValue("id")
+	activityID, err := strconv.ParseInt(activityIDStr, 10, 64)
+	if err != nil || activityID == 0 {
+		writeError(w, 400, "invalid activity id")
+		return
+	}
+	stream, err := a.strava.FetchActivityStreams(r.Context(), user.ID, activityID)
+	if err != nil {
+		writeError(w, 500, "strava streams error: "+err.Error())
+		return
+	}
+	writeJSON(w, 200, stream)
 }
 
 func randomHex(n int) string {

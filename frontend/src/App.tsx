@@ -9,8 +9,9 @@ import ActiveChallengePage from './pages/ActiveChallengePage'
 import OraclePage from './pages/OraclePage'
 import HistoryPage from './pages/HistoryPage'
 import SimulateRunPage from './pages/SimulateRunPage'
+import TerritoryPage from './pages/TerritoryPage'
 
-export type Page = 'dashboard' | 'register' | 'new-challenge' | 'active' | 'oracle' | 'history' | 'simulate'
+export type Page = 'dashboard' | 'register' | 'new-challenge' | 'active' | 'oracle' | 'history' | 'simulate' | 'territory'
 
 function getPageFromURL(): Page | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '')
@@ -20,6 +21,7 @@ function getPageFromURL(): Page | null {
   if (path === 'oracle') return 'oracle'
   if (path === 'history') return 'history'
   if (path === 'simulate') return 'simulate'
+  if (path === 'territory') return 'territory'
   const params = new URLSearchParams(window.location.search)
   if (params.get('strava_athlete_id')) return 'register'
   return null
@@ -100,6 +102,7 @@ export default function App() {
       {page === 'oracle' && <OraclePage />}
       {page === 'history' && <HistoryPage />}
       {page === 'simulate' && <SimulateRunPage onNavigate={navigate} />}
+      {page === 'territory' && <TerritoryPage />}
     </Layout>
   )
 }

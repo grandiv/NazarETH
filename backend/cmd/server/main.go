@@ -43,7 +43,7 @@ func main() {
 		log.Println("WARNING: oracle not configured (no BACKEND_SIGNER_PRIVATE_KEY)")
 	}
 
-	handler := api.New(s, stravaProv, hevyProv, oracleClient, cfg.JWTSecret, cfg.StravaRedirectURI, "http://localhost:5173")
+	handler := api.New(s, stravaProv, hevyProv, oracleClient, cfg.JWTSecret, cfg.StravaRedirectURI, "http://localhost:5173", cfg.ChallengeAddress)
 
 	mux := http.NewServeMux()
 
@@ -68,6 +68,7 @@ func main() {
 	mux.Handle("POST /api/challenge/sync", authed(http.HandlerFunc(handler.HandleChallengeSync)))
 	mux.Handle("POST /api/strava/upload-run", authed(http.HandlerFunc(handler.HandleStravaUploadRun)))
 	mux.Handle("GET /api/strava/activities", authed(http.HandlerFunc(handler.HandleStravaActivities)))
+	mux.Handle("GET /api/strava/streams/{id}", authed(http.HandlerFunc(handler.HandleStravaStreams)))
 
 	corsMux := cors(mux)
 

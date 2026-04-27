@@ -66,10 +66,12 @@ func (s *Store) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
 	CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);
 	CREATE TABLE IF NOT EXISTS challenge_sync_state (
-		challenge_id INTEGER PRIMARY KEY,
+		challenge_id INTEGER NOT NULL,
+		contract_address TEXT NOT NULL DEFAULT '',
 		user_id INTEGER NOT NULL REFERENCES users(id),
 		start_time INTEGER NOT NULL,
-		last_sync INTEGER NOT NULL DEFAULT 0
+		last_sync INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (challenge_id, contract_address)
 	);
 	`)
 	return err
@@ -224,13 +226,13 @@ func (s *Store) ListGoalsByUser(userID int64) ([]*goal.Goal, error) {
 	return goals, nil
 }
 
-func (s *Store) GetOrCreateChallengeStart(challengeID, userID int64) (int64, error) {
+func (s *Store) GetOrCreateChallengeStart(challengeID, userID int64, contractAddress string) (int64, error) {
 	var startTime int64
-	err := s.db.QueryRow("SELECT start_time FROM challenge_sync_state WHERE challenge_id = ?", challengeID).Scan(&startTime)
+	err := s.db.QueryRow("SELECT start_time FROM challenge_sync_state WHERE challenge_id = ? AND contract_address = ?", challengeID, contractAddress).Scan(&startTime)
 	if err == sql.ErrNoRows {
 		startTime = time.Now().Unix()
-		_, err = s.db.Exec("INSERT INTO challenge_sync_state (challenge_id, user_id, start_time) VALUES (?, ?, ?)",
-			challengeID, userID, startTime)
+		_, err = s.db.Exec("INSERT INTO challenge_sync_state (challenge_id, contract_address, user_id, start_time) VALUES (?, ?, ?, ?)",
+			challengeID, contractAddress, userID, startTime)
 		if err != nil {
 			return 0, err
 		}

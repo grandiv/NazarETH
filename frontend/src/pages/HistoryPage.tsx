@@ -95,6 +95,15 @@ export default function HistoryPage() {
       .catch(() => {})
   }, [])
 
+  function getActivitiesForChallenge(d: any) {
+    const deadline = Number(d.deadline as bigint)
+    const createdEstimate = deadline - 7 * 24 * 3600
+    return activities.filter(a => {
+      const t = new Date(a.start_date).getTime() / 1000
+      return t >= createdEstimate && t <= deadline && (a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim')
+    }).slice(0, 5)
+  }
+
   if (!isConnected) return (
     <div className="card error-box">Connect your wallet to view challenges.</div>
   )
@@ -171,9 +180,7 @@ export default function HistoryPage() {
         const actType      = (d.activityType as string).toLowerCase()
         const key          = String(id)
 
-        const challengeActivities = activities.filter(a =>
-          a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim'
-        ).slice(0, 5)
+        const challengeActivities = getActivitiesForChallenge(d)
 
         const statusColor = isFinalized
           ? (lost === 0n ? '#4ade80' : '#f87171')

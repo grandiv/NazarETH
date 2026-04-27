@@ -436,4 +436,49 @@ func (p *StravaProvider) CreateRun(ctx context.Context, userID int64, name strin
 	return result.ID, nil
 }
 
+type ActivityStream struct {
+	Latlng [][2]float64 `json:"latlng"`
+	Time   []int        `json:"time"`
+	Dist   []float64    `json:"distance"`
+}
+
+func (p *StravaProvider) FetchActivityStreams(ctx context.Context, userID, activityID int64) (*ActivityStream, error) {
+	token, err := p.getAccessToken(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	u := fmt.Sprintf("https://www.strava.com/api/v3/activities/%d/streams?keys=latlng,time,distance&key_by_type=true", activityID)
+	req, _ := http.NewRequestWithContext(ctx, "GET", u, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("strava streams: %w", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("strava streams error (%d): %s", resp.StatusCode, body)
+	}
+
+	var raw map[string]struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("strava streams parse: %w", err)
+	}
+
+	stream := &ActivityStream{}
+	if entry, ok := raw["latlng"]; ok {
+		json.Unmarshal(entry.Data, &stream.Latlng)
+	}
+	if entry, ok := raw["time"]; ok {
+		json.Unmarshal(entry.Data, &stream.Time)
+	}
+	if entry, ok := raw["distance"]; ok {
+		json.Unmarshal(entry.Data, &stream.Dist)
+	}
+	return stream, nil
+}
+
 var _ provider.Provider = (*StravaProvider)(nil)
