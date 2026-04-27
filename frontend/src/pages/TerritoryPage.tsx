@@ -1,6 +1,8 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useAccount } from 'wagmi'
-import { MapContainer, TileLayer, Rectangle, useMap, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, useMap, Polyline } from 'react-leaflet'
+import { useLeafletContext } from '@react-leaflet/core'
+import L from 'leaflet'
 import polyline from '@mapbox/polyline'
 import 'leaflet/dist/leaflet.css'
 import { BACKEND_URL } from '../lib/contracts'
@@ -14,46 +16,116 @@ interface StravaActivity {
   summary_polyline: string
 }
 
-const CELL_SIZE_M = 100
+const HEX_RADIUS_M = 30
 const DEG_PER_M = 0.000009
-const CELL_DEG = CELL_SIZE_M * DEG_PER_M
+const HEX_R_LAT = HEX_RADIUS_M * DEG_PER_M
+const HEX_R_LNG = HEX_RADIUS_M * DEG_PER_M
+const HEX_H = HEX_R_LAT * Math.sqrt(3)
 
-function cellKey(lat: number, lng: number): string {
-  const cl = Math.floor(lat / CELL_DEG)
-  const cg = Math.floor(lng / CELL_DEG)
-  return `${cl},${cg}`
+function hexCenter(lat: number, lng: number): [number, number] {
+  const row = Math.round(lat / (HEX_H / 2))
+  const col = Math.round(lng / (HEX_R_LNG * 1.5))
+  const clat = row * (HEX_H / 2)
+  const clng = col * (HEX_R_LNG * 1.5)
+  return [clat, clng]
 }
 
-function cellBounds(key: string): [[number, number], [number, number]] {
-  const [cl, cg] = key.split(',').map(Number)
-  return [
-    [cl * CELL_DEG, cg * CELL_DEG],
-    [(cl + 1) * CELL_DEG, (cg + 1) * CELL_DEG],
-  ]
+function hexKey(lat: number, lng: number): string {
+  const [clat, clng] = hexCenter(lat, lng)
+  return `${clat.toFixed(7)},${clng.toFixed(7)}`
 }
 
-const COLORS = [
-  '#00ff88',
-  '#00e87a',
-  '#00d06c',
-  '#00b85e',
-  '#00a050',
-  '#009944',
-  '#008838',
-  '#007730',
-]
+function hexVertices(clat: number, clng: number): [number, number][] {
+  const pts: [number, number][] = []
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 180) * (60 * i - 30)
+    pts.push([
+      clat + HEX_R_LAT * Math.sin(angle),
+      clng + HEX_R_LNG * Math.cos(angle),
+    ])
+  }
+  return pts
+}
 
-function getCellColor(count: number, maxCount: number): string {
-  if (maxCount <= 1) return COLORS[0]
-  const idx = Math.min(Math.floor((count / maxCount) * COLORS.length), COLORS.length - 1)
-  return COLORS[idx]
+function interpolateRoute(coords: [number, number][], stepM: number): [number, number][] {
+  if (coords.length < 2) return coords
+  const result: [number, number][] = [coords[0]]
+  let carry = 0
+  for (let i = 1; i < coords.length; i++) {
+    const [lat1, lng1] = coords[i - 1]
+    const [lat2, lng2] = coords[i]
+    const dLat = lat2 - lat1
+    const dLng = lng2 - lng1
+    const dist = Math.sqrt((dLat / DEG_PER_M) ** 2 + (dLng / DEG_PER_M) ** 2)
+    if (dist < 0.1) continue
+    const steps = Math.ceil((dist - carry) / stepM)
+    for (let s = 1; s <= steps; s++) {
+      const t = (carry + s * stepM) / dist
+      if (t > 1) break
+      result.push([lat1 + dLat * t, lng1 + dLng * t])
+    }
+    carry = carry + steps * stepM - dist
+    if (carry < 0) carry = 0
+    result.push(coords[i])
+  }
+  return result
 }
 
 function FitBoundsAll({ bounds }: { bounds: L.LatLngBoundsExpression | null }) {
   const map = useMap()
   useEffect(() => {
-    if (bounds) map.fitBounds(bounds, { padding: [20, 20] })
+    if (bounds) map.fitBounds(bounds, { padding: [30, 30] })
   }, [map, bounds])
+  return null
+}
+
+const GLOW_COLORS = [
+  { fill: '#00ff88', border: '#00ff8866' },
+  { fill: '#00ee7c', border: '#00ee7c66' },
+  { fill: '#00dd70', border: '#00dd7066' },
+  { fill: '#00cc64', border: '#00cc6466' },
+  { fill: '#00bb58', border: '#00bb5866' },
+  { fill: '#00aa4c', border: '#00aa4c66' },
+  { fill: '#009940', border: '#00994066' },
+  { fill: '#008834', border: '#00883466' },
+]
+
+function HexGridLayer({ grid, maxCount }: { grid: Map<string, number>; maxCount: number }) {
+  const context = useLeafletContext()
+
+  const draw = useCallback(() => {
+    const map = context.map
+
+    map.eachLayer((layer: any) => {
+      if (layer._hexGrid) map.removeLayer(layer)
+    })
+
+    const group = L.layerGroup()
+    ;(group as any)._hexGrid = true
+
+    grid.forEach((count, key) => {
+      const [clat, clng] = key.split(',').map(Number)
+      const vertices = hexVertices(clat, clng)
+      const idx = maxCount <= 1 ? 0 : Math.min(Math.floor((count / maxCount) * GLOW_COLORS.length), GLOW_COLORS.length - 1)
+      const color = GLOW_COLORS[idx]
+      L.polygon(vertices as L.LatLngExpression[], {
+        color: color.border,
+        weight: 1.5,
+        fillColor: color.fill,
+        fillOpacity: 0.55,
+        opacity: 0.7,
+      }).addTo(group)
+    })
+
+    group.addTo(map)
+    return () => { map.removeLayer(group) }
+  }, [context, grid, maxCount])
+
+  useEffect(() => {
+    const cleanup = draw()
+    return cleanup
+  }, [draw])
+
   return null
 }
 
@@ -73,119 +145,103 @@ export default function TerritoryPage() {
   }, [])
 
   const grid = useMemo(() => {
-    const cells = new Map<string, { count: number; activityIds: Set<number> }>()
+    const cells = new Map<string, number>()
     const runActivities = activities.filter(
       a => a.summary_polyline && (a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim')
     )
 
     for (const act of runActivities) {
-      const coords = polyline.decode(act.summary_polyline) as [number, number][]
+      const rawCoords = polyline.decode(act.summary_polyline) as [number, number][]
+      const coords = interpolateRoute(rawCoords, 15)
       for (const [lat, lng] of coords) {
-        const key = cellKey(lat, lng)
-        const existing = cells.get(key)
-        if (existing) {
-          existing.count++
-          existing.activityIds.add(act.id)
-        } else {
-          cells.set(key, { count: 1, activityIds: new Set([act.id]) })
-        }
+        const key = hexKey(lat, lng)
+        cells.set(key, (cells.get(key) ?? 0) + 1)
       }
     }
     return cells
   }, [activities])
 
   const totalCells = grid.size
-  const maxCount = Math.max(...Array.from(grid.values()).map(c => c.count), 1)
-  const totalAreaKm2 = (totalCells * CELL_SIZE_M * CELL_SIZE_M) / 1_000_000
+  const maxCount = Math.max(...Array.from(grid.values()), 1)
+  const hexAreaKm2 = (Math.sqrt(3) / 2 * (HEX_RADIUS_M * HEX_RADIUS_M)) / 1_000_000
+  const totalAreaKm2 = totalCells * hexAreaKm2
 
   const bounds = useMemo(() => {
     if (grid.size === 0) return null
     let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity
-    for (const key of grid.keys()) {
-      const b = cellBounds(key)
-      minLat = Math.min(minLat, b[0][0])
-      maxLat = Math.max(maxLat, b[1][0])
-      minLng = Math.min(minLng, b[0][1])
-      maxLng = Math.max(maxLng, b[1][1])
-    }
-    return [[minLat - 0.002, minLng - 0.002], [maxLat + 0.002, maxLng + 0.002]] as [[number, number], [number, number]]
+    grid.forEach((_, key) => {
+      const [clat, clng] = key.split(',').map(Number)
+      minLat = Math.min(minLat, clat - HEX_R_LAT)
+      maxLat = Math.max(maxLat, clat + HEX_R_LAT)
+      minLng = Math.min(minLng, clng - HEX_R_LNG)
+      maxLng = Math.max(maxLng, clng + HEX_R_LNG)
+    })
+    return [[minLat - 0.001, minLng - 0.002], [maxLat + 0.001, maxLng + 0.002]] as L.LatLngBoundsExpression
   }, [grid])
 
   if (!isConnected) return (
     <div className="card error-box">Connect your wallet to view territory.</div>
   )
 
+  const runActivities = activities.filter(a => a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim')
+
   return (
     <div style={{ maxWidth: 900 }}>
       <h2 style={{ color: 'var(--accent2)', marginBottom: 6 }}>Your Territory</h2>
       <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 20 }}>
-        Every block you've explored through your runs. Claim more land by completing challenges.
+        Every hex you've explored through your runs. Claim more land by completing challenges.
       </p>
 
       <div className="stat-grid" style={{ marginBottom: 20 }}>
         <div className="stat-card">
-          <div className="stat-label">Blocks Claimed</div>
+          <div className="stat-label">Hexes Claimed</div>
           <div className="stat-value" style={{ color: '#00ff88' }}>{totalCells.toLocaleString()}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Territory Area</div>
           <div className="stat-value" style={{ color: '#00ff88' }}>
-            {totalAreaKm2 < 1 ? `${(totalAreaKm2 * 1_000_000).toFixed(0)} m²` : `${totalAreaKm2.toFixed(2)} km²`}
+            {totalAreaKm2 < 0.01 ? `${(totalAreaKm2 * 1_000_000).toFixed(0)} m²` : totalAreaKm2 < 1 ? `${(totalAreaKm2 * 1000).toFixed(1)}K m²` : `${totalAreaKm2.toFixed(2)} km²`}
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Activities Mapped</div>
-          <div className="stat-value" style={{ color: '#00ff88' }}>
-            {activities.filter(a => a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim').length}
-          </div>
+          <div className="stat-label">Activities</div>
+          <div className="stat-value" style={{ color: '#00ff88' }}>{runActivities.length}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Total Distance</div>
           <div className="stat-value" style={{ color: '#00ff88' }}>
-            {(activities.reduce((s, a) => s + a.distance, 0) / 1000).toFixed(1)} km
+            {(runActivities.reduce((s, a) => s + a.distance, 0) / 1000).toFixed(1)} km
           </div>
         </div>
       </div>
 
       {totalCells > 0 ? (
         <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: 12, border: '1px solid var(--border)' }}>
-          <MapContainer center={[0, 0]} zoom={14} style={{ height: 500, width: '100%', background: '#0a0a0a' }}
-            attributionControl={false} zoomControl={true}>
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-            <FitBoundsAll bounds={bounds} />
-            {Array.from(grid.entries()).map(([key, { count }]) => {
-              const b = cellBounds(key)
-              return (
-                <Rectangle
-                  key={key}
-                  bounds={b}
-                  pathOptions={{
-                    color: 'transparent',
-                    fillColor: getCellColor(count, maxCount),
-                    fillOpacity: 0.7,
-                    weight: 0,
-                  }}
-                />
-              )
-            })}
-            {activities.filter(a => a.summary_polyline && (a.type === 'Run' || a.type === 'Ride')).slice(0, 20).map(a => {
-              const coords = polyline.decode(a.summary_polyline) as [number, number][]
-              if (coords.length < 2) return null
-              return (
-                <Polyline
-                  key={a.id}
-                  positions={coords}
-                  pathOptions={{ color: '#FC4C02', weight: 1.5, opacity: 0.3 }}
-                />
-              )
-            })}
-          </MapContainer>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px 16px', background: '#111', borderTop: '1px solid #222' }}>
-            <span style={{ fontSize: 11, color: '#666' }}>Less</span>
-            {COLORS.map((c, i) => (
-              <div key={i} style={{ width: 20, height: 12, borderRadius: 2, background: c }} />
+          <div style={{ filter: 'contrast(1.1) saturate(1.2)' }}>
+            <MapContainer center={[0, 0]} zoom={15} style={{ height: 520, width: '100%', background: '#080810' }}
+              attributionControl={false} zoomControl={true} preferCanvas={true}>
+              <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+              <FitBoundsAll bounds={bounds} />
+              <HexGridLayer grid={grid} maxCount={maxCount} />
+              {runActivities.filter(a => a.summary_polyline).slice(0, 20).map(a => {
+                const coords = polyline.decode(a.summary_polyline) as [number, number][]
+                if (coords.length < 2) return null
+                return (
+                  <Polyline
+                    key={a.id}
+                    positions={coords}
+                    pathOptions={{ color: '#FC4C02', weight: 2, opacity: 0.4 }}
+                  />
+                )
+              })}
+            </MapContainer>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, padding: '12px 16px', background: '#111', borderTop: '1px solid #1a1a2a' }}>
+            <span style={{ fontSize: 11, color: '#555' }}>Explored once</span>
+            {GLOW_COLORS.map((c, i) => (
+              <div key={i} style={{ width: 22, height: 14, borderRadius: 3, background: c.fill, boxShadow: `0 0 6px ${c.fill}44` }} />
             ))}
-            <span style={{ fontSize: 11, color: '#666' }}>More visits</span>
+            <span style={{ fontSize: 11, color: '#555' }}>Explored many</span>
           </div>
         </div>
       ) : (
@@ -194,10 +250,10 @@ export default function TerritoryPage() {
         </div>
       )}
 
-      {totalCells > 0 && (
+      {runActivities.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <h3 style={{ fontSize: 15, marginBottom: 10, color: 'var(--text)' }}>Recent Conquests</h3>
-          {activities.filter(a => a.type === 'Run' || a.type === 'Ride' || a.type === 'Swim').slice(0, 5).map(a => (
+          {runActivities.slice(0, 5).map(a => (
             <div key={a.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong style={{ fontSize: 14 }}>{a.name}</strong>
