@@ -8,6 +8,10 @@ import './index.css'
 
 const qc = new QueryClient()
 
+import('@farcaster/miniapp-sdk').then(({ sdk }) => {
+  sdk.actions.ready().catch(() => {})
+}).catch(() => {})
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <WagmiProvider config={config}>
