@@ -1,0 +1,19 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d0d12"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FC4C02"/>
+      <stop offset="100%" stop-color="#ff7e3a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="60" y="260" width="80" height="80" rx="16" fill="url(#accent)"/>
+  <text x="100" y="316" font-family="Arial,sans-serif" font-size="40" font-weight="800" fill="white" text-anchor="middle">N</text>
+  <text x="170" y="320" font-family="Arial,sans-serif" font-size="56" font-weight="800" fill="white">Nazar</text>
+  <text x="420" y="320" font-family="Arial,sans-serif" font-size="56" font-weight="800" fill="#ff7e3a">ETH</text>
+  <text x="60" y="400" font-family="Arial,sans-serif" font-size="28" fill="#8888aa">Stake on Yourself. Hit your goals. Earn it back.</text>
+  <text x="60" y="460" font-family="Arial,sans-serif" font-size="22" fill="#555570">Built on Base · Decentralized Fitness Commitments</text>
+</svg>
