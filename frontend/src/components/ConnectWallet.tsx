@@ -40,57 +40,25 @@ export default function ConnectWallet() {
     )
   }
 
-  const activeConnectors = connectors.filter(c => c.ready || c.id === 'injected' || c.id === 'coinbaseWalletSDK')
-
-  if (activeConnectors.length <= 1) {
-    return (
-      <button
-        disabled={isPending}
-        onClick={() => connect({ connector: activeConnectors[0] || connectors[0] })}
-        style={{
-          background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
-          border: 'none',
-          borderRadius: 8,
-          color: '#fff',
-          padding: '8px 18px',
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-          transition: 'all .15s ease',
-          boxShadow: '0 2px 8px rgba(5,75,255,0.3)',
-        }}
-      >
-        {isPending ? 'Connecting...' : 'Connect Wallet'}
-      </button>
-    )
-  }
-
   return (
-    <div style={{ display: 'flex', gap: 6 }}>
-      {activeConnectors.map(c => (
-        <button
-          key={c.uid}
-          disabled={isPending}
-          onClick={() => connect({ connector: c })}
-          style={{
-            background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
-            border: 'none',
-            borderRadius: 8,
-            color: '#fff',
-            padding: '8px 14px',
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            transition: 'all .15s ease',
-            boxShadow: '0 2px 8px rgba(5,75,255,0.3)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {isPending ? '...' : (c.name === 'Coinbase Wallet' ? 'Coinbase' : c.name === 'Injected' ? 'MetaMask' : c.name)}
-        </button>
-      ))}
-    </div>
+    <button
+      disabled={isPending}
+      onClick={() => connect({ connector: connectors[0] })}
+      style={{
+        background: 'linear-gradient(135deg, #054BFF, #3d7aff)',
+        border: 'none',
+        borderRadius: 8,
+        color: '#fff',
+        padding: '8px 18px',
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        transition: 'all .15s ease',
+        boxShadow: '0 2px 8px rgba(5,75,255,0.3)',
+      }}
+    >
+      {isPending ? 'Connecting...' : 'Connect Wallet'}
+    </button>
   )
 }

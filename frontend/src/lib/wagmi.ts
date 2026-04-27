@@ -1,14 +1,13 @@
 import { createConfig, http } from 'wagmi'
 import { baseSepolia } from 'wagmi/chains'
-import { injected, coinbaseWallet } from 'wagmi/connectors'
+import { injected, baseAccount } from 'wagmi/connectors'
 
 export const config = createConfig({
   chains: [baseSepolia],
   connectors: [
     injected(),
-    coinbaseWallet({
+    baseAccount({
       appName: 'NazarETH',
-      preference: 'smartWalletOnly',
     }),
   ],
   transports: {
