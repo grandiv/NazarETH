@@ -9,4 +9,7 @@ export default defineConfig({
   server: {
     historyApiFallback: true,
   },
+  build: {
+    manifest: true,
+  },
 })
